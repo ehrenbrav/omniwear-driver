@@ -290,25 +290,7 @@ namespace {
           continue;
         }
 
-#if 0
-        // Probably redundant check for this device being HIDClass.
-        // For now, we ignore the data, but we might want to add this
-        // filter later.
-        for (int i = 0; ;++i) {
-          SP_DEVINFO_DATA dinfData;
-          dinfData.cbSize = sizeof (dinfData);
-          if (!SetupDiEnumDeviceInfo (hDevInfo, i, &dinfData))
-            break;
-          char sz[64];
-          if (!SetupDiGetDeviceRegistryProperty (hDevInfo, &dinfData,
-                                                 SPDRP_CLASS, nullptr,
-                                                 (uint8_t*) sz, sizeof (sz),
-                                                 nullptr))
-            continue;
-//          printf ("registry %s\n", sz);
-        }
-#endif
-
+        // Open path so we can fetch attributes and preparsed data
         HANDLE h = open_path (pdiDetail->DevicePath, true);
         if (h == INVALID_HANDLE_VALUE)
           continue;
@@ -324,6 +306,7 @@ namespace {
           HidD_FreePreparsedData (prepdata);
         }
 
+        // Build the information structure
         HID::DeviceInfo device_info {
           attr.VendorID,
             attr.ProductID,
@@ -338,6 +321,7 @@ namespace {
 
         CloseHandle (h);
 
+        // Pass information structure and OS interface handle to caller
         if (!f (hDevInfo, device_info))
           break;
       }
@@ -394,9 +378,6 @@ namespace {
       return device; }
 
   } handler$;
-
-
-
 }
 
 namespace HID {
