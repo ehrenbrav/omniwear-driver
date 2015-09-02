@@ -41,6 +41,8 @@
 
 /* ----- Includes */
 
+#include <stdint.h>
+
 #if defined (__cplusplus)
 # include <string>
 # include <vector>
