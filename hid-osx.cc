@@ -27,7 +27,6 @@
 //#include "standard.h"
 #include "hid.h"
 
-extern "C" {
 // From featureful implementation
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/hid/IOHIDLib.h>
@@ -36,7 +35,6 @@ extern "C" {
 #include <IOKit/hid/IOHIDManager.h>
 #include <IOKit/hid/IOHIDKeys.h>
 #include <CoreFoundation/CoreFoundation.h>
-}
 
 #include <locale.h>
 #include <pthread.h>
@@ -46,7 +44,7 @@ extern "C" {
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-
+#include <functional>
 
 namespace OSXHID {
 
@@ -164,9 +162,9 @@ namespace HID {
       CFRelease (hid_manager);
       hid_manager = nullptr; } }
 
-  std::vector<Device*>* enumerate (uint16_t vid_p, uint16_t pid_p) {
+  void enumerate (std::function<bool (IOHIDDeviceRef, const DeviceInfo&)> f) {
     if (!init ())
-      return nullptr;
+      return;
 
     service ();  // *** FIXME: should we do this or should we let the
                  // *** application handle it?
@@ -178,41 +176,70 @@ namespace HID {
     IOHIDDeviceRef device_refs[num_devices];
     CFSetGetValues (device_set, (const void **) device_refs);
 
-    auto devices = new std::vector<Device*>;
-
     for (auto dev : device_refs) {
       if (!dev)
         continue;
 
-      auto vid = OSXHID::vendor_id (dev);
-      auto pid = OSXHID::product_id (dev);
-      if (false
-          	// Discard devices that don't match selection criteria
-          || (vid_p && vid_p != vid) || (pid_p && pid_p != pid)
-          	// Discard devices without VID/PID
-          || (vid == 0 && pid == 0))
-        continue;
+      DeviceInfo device_info {
+        OSXHID::vendor_id (dev),
+          OSXHID::product_id (dev),
+          OSXHID::path (dev), OSXHID::serial (dev),
+          OSXHID::version (dev),
+          OSXHID::manufacturer (dev),
+          OSXHID::product (dev),
+          OSXHID::usage_page (dev),
+          OSXHID::usage (dev) };
 
-      Device* device = new Device { vid, pid,
-                                    OSXHID::path (dev),
-                                    OSXHID::serial (dev),
-                                    OSXHID::version (dev),
-                                    OSXHID::manufacturer (dev),
-                                    OSXHID::product (dev),
-                                    OSXHID::usage_page (dev),
-                                    OSXHID::usage (dev) };
-
-      devices->push_back (device);
+      if (!f (dev, device_info))
+        break;
     }
 
     CFRelease (device_set);
+  }
+
+  std::vector<DeviceInfo*>* enumerate (uint16_t vid_p, uint16_t pid_p) {
+    if (!init ())
+      return nullptr;
+
+    auto devices = new std::vector<DeviceInfo*>;
+
+    enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
+        if (false
+          	// Discard devices that don't match selection criteria
+            || (vid_p && vid_p != device_info.vid_)
+            || (pid_p && pid_p != device_info.pid_)
+          	// Discard devices without VID/PID
+            || (device_info.vid_ == 0 && device_info.pid_ == 0)
+            )
+          return true;
+        devices->push_back (new DeviceInfo (device_info));
+        return true;
+      });
 
     return devices;
   }
 
-
-  Device* open (uint16_t vid, uint16_t pid, std::string serial) {
+  Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
     return nullptr; }
+
+  Device* open (const std::string& path) {
+    if (!init ())
+      return nullptr;
+
+    Device* result = nullptr;
+    enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
+        printf ("enum %s\n", device_info.path_.c_str ());
+        if (path.compare (device_info.path_) == 0
+            && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
+                == kIOReturnSuccess)) {
+          CFRetain (os_dev);
+          result = new Device (os_dev);
+        }
+        return !result;
+      });
+
+    return result;
+  }
 
   int write (uint8_t report, const char* rgb, size_t cb) { return 0; }
   int write (const char* rgb, size_t cb) { return 0; }

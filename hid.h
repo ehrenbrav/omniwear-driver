@@ -32,7 +32,7 @@ namespace HID {
   bool init ();
   void release ();
 
-  struct Device {
+  struct DeviceInfo {
     uint16_t vid_;
     uint16_t pid_;
     std::string path_;
@@ -44,15 +44,20 @@ namespace HID {
     uint16_t usage_ = 0;
     int interface_ = -1;
 
-    Device (uint16_t vid, uint16_t pid, std::string path, std::string serial,
-            uint16_t version, std::string manufacturer, std::string product,
+    DeviceInfo (uint16_t vid, uint16_t pid, std::string path,
+                std::string serial, uint16_t version,
+                std::string manufacturer, std::string product,
             uint16_t usage_page, uint16_t usage)
     : vid_ (vid), pid_ (pid), path_ (path), serial_ (serial),
       version_ (version), manufacturer_ (manufacturer),
       product_ (product), usage_page_ (usage_page), usage_ (usage) {}
   };
 
-  std::vector<Device*>* enumerate (uint16_t vid = 0, uint16_t pid = 0);
+  struct Device {
+    int handle_;
+  };
+
+  std::vector<DeviceInfo*>* enumerate (uint16_t vid = 0, uint16_t pid = 0);
   Device* open (uint16_t vid, uint16_t pid, const std::string& serial);
   Device* open (const std::string& path);
 
@@ -61,7 +66,7 @@ namespace HID {
 
   int read (char* rgb, size_t cb);
 
-  void release (std::vector<Device*>*);
+  void release (std::vector<DeviceInfo*>*);
   void release (Device*);
 
   void service ();
