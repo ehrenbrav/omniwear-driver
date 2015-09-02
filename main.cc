@@ -38,9 +38,10 @@ int main (int argc, const char** argv)
 #endif
 
   {
-    printf ("enumerating\n");
+    printf ("enumerate call main\n");
     auto devices = HID::enumerate ();
 
+    printf ("devices %p\n", devices);
     if (devices)
       for (auto dev : *devices) {
         printf ("dev %s %s %s\n",

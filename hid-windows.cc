@@ -27,6 +27,7 @@ x86_64-w64-mingw32-g++ -o hid hid-windows.cc main.cc -std=c++11 -lhid -lsetupapi
 
 #include "hid.h"
 #include <string.h>
+#include <functional>
 
 extern "C" {
 #include <windows.h>
@@ -77,6 +78,47 @@ namespace {
                        0, //FILE_FLAG_OVERLAPPED,
                        0); }
 
+  /** Convert UCS-2LE, as given by USB devices, to UTF-8.  The input
+      string does not need to be null terminated.  The output will
+      contain a NULL. */
+  std::string ucs2toutf8 (WCHAR* str, int c)
+  {
+    char sz[256];
+    WideCharToMultiByte(CP_UTF8, 0, str, c, sz, sizeof (sz), NULL, NULL);
+    return std::string (sz);
+  }
+
+  std::string serial (HANDLE h)
+  {
+    auto constexpr C_MAX = 128;
+    WCHAR string[C_MAX];
+    if (HidD_GetSerialNumberString (h, string, sizeof (string)))
+      return ucs2toutf8 (string, sizeof (string));
+
+    return std::string ();
+  }
+
+  std::string manufacturer (HANDLE h)
+  {
+    auto constexpr C_MAX = 128;
+    WCHAR string[C_MAX];
+    if (HidD_GetManufacturerString (h, string, sizeof (string)))
+      return ucs2toutf8 (string, sizeof (string));
+
+    return std::string ();
+  }
+
+  std::string product (HANDLE h)
+  {
+    auto constexpr C_MAX = 128;
+    WCHAR string[C_MAX];
+    if (HidD_GetProductString (h, string, sizeof (string)))
+      return ucs2toutf8 (string, sizeof (string));
+
+    return std::string ();
+  }
+
+
   struct Handler {
     bool failed_;
     GUID guid_;
@@ -97,6 +139,7 @@ namespace {
       return p ? p->wndprocx (hwnd, msg, wParam, lParam)
         : DefWindowProc (hwnd, msg, wParam, lParam); }
     LRESULT wndprocx (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+#if 0
       switch (msg) {
       case WM_DEVICECHANGE:
         switch (wParam) {
@@ -111,10 +154,13 @@ namespace {
       case WM_POWERBROADCAST:
         break;
       }
+#endif
       return DefWindowProc (hwnd, msg, wParam, lParam); }
 
     bool init () {
-      printf ("init\n");
+      return true;
+
+      printf ("init (%d)\n", failed_);
 
       if (failed_)
         return false;
@@ -169,7 +215,9 @@ namespace {
 
       if (!hNotify_) {
         failed_ = true;
-        return false; }
+        return false;
+      }
+      printf ("init: success\n");
       return true;
     }
 
@@ -189,49 +237,43 @@ namespace {
       } }
 
 
-    void update () {
-      printf ("update\n");
-
-      if (!init ())                    // Lazy initialization
+    void enumerate (std::function<bool (HDEVINFO hDevInfo,
+                                        const HID::DeviceInfo& device_info)> f) {
+      printf ("enumerate: top\n");
+      if (!init ())
         return;
-
-      printf ("update: GetClassDevs\n");
 
       HDEVINFO hDevInfo
         = SetupDiGetClassDevs (&guid_, NULL, NULL,
                                DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
 
-      printf ("update: enumerating\n");
+      printf ("enumerate: hDevInfo %p\n", hDevInfo);
 
-      for (DWORD index = 0; hDevInfo != INVALID_HANDLE_VALUE; ++index) {
-        printf ("update: index %d\n", index);
-        SP_DEVICE_INTERFACE_DATA diData;
-        bzero (&diData, sizeof (diData));
-        diData.cbSize = sizeof (diData);
-
-        printf ("update: size di data\n");
-        if (!SetupDiEnumDeviceInterfaces (hDevInfo, 0, &guid_, index, &diData))
+      for (int i = 0; !!hDevInfo; ++i) {
+        // Get the interface @i
+        SP_DEVICE_INTERFACE_DATA diData = { sizeof (diData) };
+        if (!SetupDiEnumDeviceInterfaces (hDevInfo, 0, &guid_, i, &diData))
           break;
 
-        DWORD cb = 0;
+        // Get the interface path
+        DWORD cb;
         SetupDiGetDeviceInterfaceDetail (hDevInfo, &diData,
                                          nullptr, 0, &cb, nullptr);
-        printf ("update: size di data %d\n", cb);
         if (cb == 0)
           continue;
 
         char rgb[cb];
-        PSP_INTERFACE_DEVICE_DETAIL_DATA pdiDetail
+        auto pdiDetail
           = reinterpret_cast<PSP_INTERFACE_DEVICE_DETAIL_DATA> (rgb);
         pdiDetail->cbSize = sizeof (SP_DEVICE_INTERFACE_DETAIL_DATA);
         if (!SetupDiGetDeviceInterfaceDetail (hDevInfo, &diData,
-                                              pdiDetail, cb, &cb, nullptr)) {
+                                              pdiDetail, cb,
+                                              nullptr, nullptr)) {
           print_error (GetLastError ());
           continue;
-
         }
-        printf ("path %s\n", pdiDetail->DevicePath);
 
+#if 0
         // Probably redundant check for this device being HIDClass.
         // For now, we ignore the data, but we might want to add this
         // filter later.
@@ -248,6 +290,7 @@ namespace {
             continue;
 //          printf ("registry %s\n", sz);
         }
+#endif
 
         HANDLE h = open_path (pdiDetail->DevicePath, true);
         if (h == INVALID_HANDLE_VALUE)
@@ -256,12 +299,71 @@ namespace {
         HIDD_ATTRIBUTES attr;
         HidD_GetAttributes (h, &attr);
 
-        printf ("vid %04x  pid %04x\n", attr.VendorID, attr.ProductID);
+        PHIDP_PREPARSED_DATA prepdata;
+        HIDP_CAPS caps;
+        if (HidD_GetPreparsedData (h, &prepdata)) {
+          if (HidP_GetCaps(prepdata, &caps) != HIDP_STATUS_SUCCESS)
+            bzero (&caps, sizeof (caps));
+          HidD_FreePreparsedData (prepdata);
+        }
+
+        HID::DeviceInfo device_info {
+          attr.VendorID,
+            attr.ProductID,
+            std::string (pdiDetail->DevicePath),
+            serial (h),
+            attr.VersionNumber,
+            manufacturer (h),
+            product (h),
+            caps.UsagePage,
+            caps.Usage
+            };
 
         CloseHandle (h);
+
+        if (!f (hDevInfo, device_info))
+          break;
       }
       if (hDevInfo != INVALID_HANDLE_VALUE)
         SetupDiDestroyDeviceInfoList (hDevInfo);
+    }
+
+#if 0
+    void update () {
+      enumerate ([] (HDEVINFO hDevInfo,
+                     const HID::DeviceInfo& device_info) {
+                   printf ("path: %s\n", device_info.path_.c_str ());
+                   printf ("  vid %04x  pid %04x\n",
+                           device_info.vid_,
+                           device_info.pid_);
+                   return true;
+                 });
+    }
+#endif
+
+    std::vector<HID::DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
+      if (!init ())
+        return nullptr;
+
+      auto devices = new std::vector<HID::DeviceInfo*>;
+
+      enumerate ([&] (HDEVINFO hDevInfo,
+                      const HID::DeviceInfo& device_info){
+                   printf ("got dev %s\n",
+                           device_info.path_.c_str ());
+                   if (false
+                       // Discard devices that don't match selection criteria
+                       || (vid && vid != device_info.vid_)
+                       || (pid && pid != device_info.pid_)
+                       // Discard devices without VID/PID
+                       || (device_info.vid_ == 0 && device_info.pid_ == 0)
+                       )
+                     return true;
+                   devices->push_back (new HID::DeviceInfo (device_info));
+                   return true;
+                 });
+
+      return devices;
     }
 
   } handler$;
@@ -276,8 +378,9 @@ namespace HID {
   void release () {}
 
   std::vector<DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
-    handler$.update ();
-    return nullptr; }
+    printf ("enumerating for vid/pid\n");
+    return handler$.enumerate (vid, pid); }
+
   Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
     return nullptr; }
   Device* open (const std::string& path) {
