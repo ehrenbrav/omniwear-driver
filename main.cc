@@ -18,13 +18,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <hidapi/hidapi.h>
+//#include <hidapi/hidapi.h>
 #include "hid.h"
 
 int main (int argc, const char** argv)
 {
-  auto result = hid_init ();
-  printf ("# hid_init %d\n", result);
+//  auto result = hid_init ();
+//  printf ("# hid_init %d\n", result);
 
 #if 0
   {
@@ -38,14 +38,16 @@ int main (int argc, const char** argv)
 #endif
 
   {
+    printf ("enumerating\n");
     auto devices = HID::enumerate ();
 
-    for (auto dev : *devices) {
-      printf ("dev %s %s %s\n",
-              dev->path_.c_str (),
-              dev->manufacturer_.c_str (),
-              dev->product_.c_str ());
-    }
+    if (devices)
+      for (auto dev : *devices) {
+        printf ("dev %s %s %s\n",
+                dev->path_.c_str (),
+                dev->manufacturer_.c_str (),
+                dev->product_.c_str ());
+      }
   }
 
 
