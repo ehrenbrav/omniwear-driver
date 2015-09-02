@@ -133,16 +133,35 @@ namespace OSXHID {
       << "_" << std::setfill ('0') << std::setw (4) << pid
       << "_" << std::setw(8) << location;
     auto result = o.str ();
-    return o.str ();
-  }
+    return o.str (); }
 
 }
 
 namespace {
   IOHIDManagerRef hid_manager;
+  auto constexpr MS_TIMEOUT = 10*1000;
 }
 
 namespace HID {
+
+  struct DeviceImpl {
+    IOHIDDeviceRef os_dev_;
+    ~DeviceImpl () {
+      if (os_dev_) {
+        CFRelease(os_dev_);
+        os_dev_ = 0; } }
+  };
+
+
+  Device::Device () {
+    impl_ = new DeviceImpl; }
+
+  Device::~Device () {
+    if (impl_) {
+      delete impl_;
+      impl_ = nullptr;
+    }
+  }
 
   bool init () {
     if (!hid_manager) {
@@ -233,7 +252,8 @@ namespace HID {
             && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
                 == kIOReturnSuccess)) {
           CFRetain (os_dev);
-          result = new Device (os_dev);
+          result = new Device;
+          result->impl_->os_dev_ = os_dev;
         }
         return !result;
       });
@@ -251,7 +271,8 @@ namespace HID {
             && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
                 == kIOReturnSuccess)) {
           CFRetain (os_dev);
-          result = new Device (os_dev);
+          result = new Device;
+          result->impl_->os_dev_ = os_dev;
         }
         return !result;
       });
@@ -259,10 +280,28 @@ namespace HID {
     return result;
   }
 
-  int write (uint8_t report, const char* rgb, size_t cb) { return 0; }
-  int write (const char* rgb, size_t cb) { return 0; }
+  int write (Device* device, uint8_t report, const char* rgb, size_t cb) {
+    if (!device)
+      return -1;
+    auto result = IOHIDDeviceSetReport (device->impl_->os_dev_,
+                                        kIOHIDReportTypeOutput,
+                                        report,
+                                        (uint8_t*) rgb, cb);
+    return result == kIOReturnSuccess ? cb : -1; }
 
-  int read (char* rgb, size_t cb) { return 0; }
+  int write (Device* device, const char* rgb, size_t cb) {
+    return write (device, 0, rgb, cb); }
+
+  int read (Device* device, uint8_t report, char* rgb, size_t cb) {
+    if (!device)
+      return -1;
+
+    CFIndex count = cb;
+    auto result = IOHIDDeviceGetReport (device->impl_->os_dev_,
+                                        kIOHIDReportTypeInput,
+                                        report,
+                                        (uint8_t*) rgb, &count);
+    return result == kIOReturnSuccess ? count : -1; }
 
   void release (std::vector<Device*>* devices) {
     if (devices) {
@@ -271,11 +310,6 @@ namespace HID {
       delete devices;
     }
   }
-
-  Device::~Device () {
-    if (os_dev_) {
-      CFRelease(os_dev_);
-      os_dev_ = 0; } }
 
   void release (Device* device) {
     delete device; }

@@ -9,10 +9,9 @@
    DESCRIPTION
    -----------
 
-   HID interface class.  This work derives from the Signal 11 hidapi
-   library.  Instead of implementing three different interfaces we
-   have a single class with macro controlled implementations.  This
-   allows us to agregate the common portions of the interface.
+   HID interface class.  The interface is OS agnostic and should be
+   appropriate for any platform.  Platform specific details are hidden
+   from the caller.
 
 */
 
@@ -23,7 +22,6 @@
 
 #include <string>
 #include <vector>
-#include <IOKit/hid/IOHIDManager.h>
 
 /* ----- Macros */
 
@@ -48,27 +46,27 @@ namespace HID {
     DeviceInfo (uint16_t vid, uint16_t pid, std::string path,
                 std::string serial, uint16_t version,
                 std::string manufacturer, std::string product,
-            uint16_t usage_page, uint16_t usage)
+                uint16_t usage_page, uint16_t usage)
     : vid_ (vid), pid_ (pid), path_ (path), serial_ (serial),
       version_ (version), manufacturer_ (manufacturer),
       product_ (product), usage_page_ (usage_page), usage_ (usage) {}
   };
 
+  struct DeviceImpl;
   struct Device {
-    IOHIDDeviceRef os_dev_;
-
-    Device (IOHIDDeviceRef os_dev) : os_dev_ (os_dev) {}
+    Device ();
     ~Device ();
+    DeviceImpl* impl_;
   };
 
   std::vector<DeviceInfo*>* enumerate (uint16_t vid = 0, uint16_t pid = 0);
   Device* open (uint16_t vid, uint16_t pid, const std::string& serial);
   Device* open (const std::string& path);
 
-  int write (uint8_t report, const char* rgb, size_t cb);
-  int write (const char* rgb, size_t cb);
+  int write (Device*, uint8_t report, const char* rgb, size_t cb);
+  int write (Device*, const char* rgb, size_t cb);
 
-  int read (char* rgb, size_t cb);
+  int read (Device*, char* rgb, size_t cb);
 
   void release (std::vector<DeviceInfo*>*);
   void release (Device*);
