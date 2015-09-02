@@ -49,6 +49,26 @@ extern "C" {
 }
 #endif
 
+namespace HID {
+  struct DeviceImpl {
+    HANDLE h_;
+    ~DeviceImpl () {
+      if (h_) {
+        CloseHandle (h_);
+        h_ = 0; } }
+  };
+
+  Device::Device () {
+    impl_ = new DeviceImpl; }
+
+  Device::~Device () {
+    if (impl_) {
+      delete impl_;
+      impl_ = nullptr;
+    }
+  }
+}
+
 namespace {
 
   void bzero (void* pv, size_t cb) {
@@ -239,15 +259,12 @@ namespace {
 
     void enumerate (std::function<bool (HDEVINFO hDevInfo,
                                         const HID::DeviceInfo& device_info)> f) {
-      printf ("enumerate: top\n");
       if (!init ())
         return;
 
       HDEVINFO hDevInfo
         = SetupDiGetClassDevs (&guid_, NULL, NULL,
                                DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
-
-      printf ("enumerate: hDevInfo %p\n", hDevInfo);
 
       for (int i = 0; !!hDevInfo; ++i) {
         // Get the interface @i
@@ -349,8 +366,6 @@ namespace {
 
       enumerate ([&] (HDEVINFO hDevInfo,
                       const HID::DeviceInfo& device_info){
-                   printf ("got dev %s\n",
-                           device_info.path_.c_str ());
                    if (false
                        // Discard devices that don't match selection criteria
                        || (vid && vid != device_info.vid_)
@@ -366,25 +381,35 @@ namespace {
       return devices;
     }
 
+    HID::Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
+      return nullptr; }
+
+    HID::Device* open (const std::string& path) {
+      HANDLE h = open_path (path.c_str (), false);
+      if (h == INVALID_HANDLE_VALUE)
+        return nullptr;
+
+      auto device = new HID::Device;
+      device->impl_->h_ = h;
+      return device; }
+
   } handler$;
+
+
 
 }
 
 namespace HID {
-  struct DeviceImpl {
-  };
-
   bool init () { return handler$.init (); }
   void release () {}
 
   std::vector<DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
-    printf ("enumerating for vid/pid\n");
     return handler$.enumerate (vid, pid); }
 
   Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
-    return nullptr; }
+    return handler$.open (vid, pid, serial); }
   Device* open (const std::string& path) {
-    return nullptr; }
+    return handler$.open (path); }
 
   int write (Device*, uint8_t report, const char* rgb, size_t cb);
   int write (Device*, const char* rgb, size_t cb);
