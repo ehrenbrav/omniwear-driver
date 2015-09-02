@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <IOKit/hid/IOHIDManager.h>
 
 /* ----- Macros */
 
@@ -54,7 +55,10 @@ namespace HID {
   };
 
   struct Device {
-    int handle_;
+    IOHIDDeviceRef os_dev_;
+
+    Device (IOHIDDeviceRef os_dev) : os_dev_ (os_dev) {}
+    ~Device ();
   };
 
   std::vector<DeviceInfo*>* enumerate (uint16_t vid = 0, uint16_t pid = 0);

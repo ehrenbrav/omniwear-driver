@@ -245,8 +245,8 @@ namespace HID {
       return nullptr;
 
     Device* result = nullptr;
+
     enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
-        printf ("enum %s\n", device_info.path_.c_str ());
         if (path.compare (device_info.path_) == 0
             && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
                 == kIOReturnSuccess)) {
@@ -272,6 +272,11 @@ namespace HID {
     }
   }
 
+  Device::~Device () {
+    if (os_dev_) {
+      CFRelease(os_dev_);
+      os_dev_ = 0; } }
+
   void release (Device* device) {
     delete device; }
 
@@ -279,11 +284,17 @@ namespace HID {
     if (!init ())
       return;
 
-    SInt32 res;
     // *** FIXME: this should terminate even if there are events, no?
-    do {
-      res = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.001, FALSE);
-    } while(res != kCFRunLoopRunFinished && res != kCFRunLoopRunTimedOut);
+    while (1) {
+      switch (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.001, FALSE)) {
+      default:
+        continue;
+      case kCFRunLoopRunFinished:
+      case kCFRunLoopRunTimedOut:
+        break;
+      }
+      break;
+    }
   }
 
 }
