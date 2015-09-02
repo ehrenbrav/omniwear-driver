@@ -197,7 +197,7 @@ namespace HID {
     CFRelease (device_set);
   }
 
-  std::vector<DeviceInfo*>* enumerate (uint16_t vid_p, uint16_t pid_p) {
+  std::vector<DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
     if (!init ())
       return nullptr;
 
@@ -206,8 +206,8 @@ namespace HID {
     enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
         if (false
           	// Discard devices that don't match selection criteria
-            || (vid_p && vid_p != device_info.vid_)
-            || (pid_p && pid_p != device_info.pid_)
+            || (vid && vid != device_info.vid_)
+            || (pid && pid != device_info.pid_)
           	// Discard devices without VID/PID
             || (device_info.vid_ == 0 && device_info.pid_ == 0)
             )
@@ -220,7 +220,25 @@ namespace HID {
   }
 
   Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
-    return nullptr; }
+    if (!init ())
+      return nullptr;
+
+    Device* result = nullptr;
+
+    enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
+        if (true
+            && (!vid || vid == device_info.vid_)
+            && (!pid || pid == device_info.pid_)
+            && (!serial.length () || serial.compare (device_info.serial_))
+            && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
+                == kIOReturnSuccess)) {
+          CFRetain (os_dev);
+          result = new Device (os_dev);
+        }
+        return !result;
+      });
+
+    return result; }
 
   Device* open (const std::string& path) {
     if (!init ())
