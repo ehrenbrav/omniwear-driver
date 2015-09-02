@@ -13,6 +13,27 @@
    appropriate for any platform.  Platform specific details are hidden
    from the caller.
 
+   NOTES
+   =====
+
+   o libhid and others.  While there are cross-platform libraries for
+     managing the HID interface; they are in C; we've found errors in
+     their constructions; we want type safety as much as we can; we
+     don't want the 'library' to spawn threads; we will offer a C
+     interface for compatibity on top of the C++ interface.  Also, we
+     don't want another DLL.  This code should be linked into the
+     application.
+
+   o UTF-8.  To the best of our ability, we will offer UTF-8 strings
+     instead of wide-character strings.  Doing so should smooth out
+     the differenced between the platforms.  We *might* need to
+     back-pedal on this if Windows turns out to be problematic.
+
+   o Threadless.  To the best of our ability, this library (of sorts)
+     will be threadless.  Each platform specific interface sprouts a
+     service() call that the user can either invoke by hand or place
+     in a thread to perform operations that the library requires.
+
 */
 
 #if !defined (HID_H_INCLUDED)
@@ -20,12 +41,16 @@
 
 /* ----- Includes */
 
-#include <string>
-#include <vector>
+#if defined (__cplusplus)
+# include <string>
+# include <vector>
+#endif
 
 /* ----- Macros */
 
 /* ----- Types */
+
+#if defined (__cplusplus)
 
 namespace HID {
   bool init ();
@@ -73,6 +98,8 @@ namespace HID {
 
   void service ();
 }
+
+#endif
 
 /* ----- Globals */
 

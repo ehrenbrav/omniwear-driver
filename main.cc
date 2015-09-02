@@ -10,11 +10,14 @@
    -----------
 
    g++ -o hid main.cc -lhidapi -std=c++11
+   g++ -o hid main.cc hid-osx.cc -lhidapi -std=c++11 --framework IOKit --framework Core
+   g++ -o hid main.c hid-windows.cc -std=c++11
 
 */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <hidapi/hidapi.h>
 #include "hid.h"
 
