@@ -21,7 +21,6 @@
    o service() termination.  The service() call should have a limit on
      the duration of the execution as either a loop count or a time.
 
-x86_64-w64-mingw32-g++ -o hid hid-windows.cc main.cc -std=c++11 -lhid -lsetupapi -static -static-libgcc -static-libstdc++
 */
 
 //#include <unistd.h>
@@ -396,15 +395,17 @@ namespace HID {
   Device* open (const std::string& path) {
     return handler$.open (path); }
 
-  int write (Device*, uint8_t report, const char* rgb, size_t cb);
-  int write (Device*, const char* rgb, size_t cb);
+  int write (Device*, uint8_t report, const char* rgb, size_t cb) {
+    return 0; }
+  int write (Device*, const char* rgb, size_t cb) {
+    return 0; }
 
   int read (Device*, char* rgb, size_t cb);
 
   void release (std::vector<DeviceInfo*>*);
   void release (Device*);
 
-  void service () {
-    handler$.service (); }
+  bool service () {
+    return handler$.service (); }
 
 }

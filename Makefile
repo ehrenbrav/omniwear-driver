@@ -15,10 +15,19 @@ ifeq ("$(OS)","Linux")
   override OS=linux
 endif
 
+ifeq ("$(OS)","Windows")
+  override OS=win
+endif
+
 CFLAGS=-std=c++11 -O3 -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
+endif
+
+ifeq ("$(OS)","win")
+CONFIG_WINDOWS=y
+COMPILER_PREFIX=x86_64-w64-mingw32-
 endif
 
 ifeq ("$(OS)","linux")
@@ -30,6 +39,10 @@ hid_SRCS=main.cc
 hid_SRCS-$(CONFIG_OSX)=hid-osx.cc
 hid_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
 
+hid_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
+hid_LIBS-$(CONFIG_WINDOWS)= \
+	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+
 hid_SRCS+=$(hid_SRCS-y)
 hid_LIBS+=$(hid_LIBS-y)
 
@@ -38,6 +51,8 @@ OBJS=$(patsubst %.c,$O%.o, \
      $($1_SRCS)))
 
 hid_OBJS:=$(call OBJS,hid)
+
+CXX=$(COMPILER_PREFIX)g++
 
 ifeq ("$(V)","1")
 Q=
@@ -56,13 +71,13 @@ all: $Ohid
 
 $Ohid: $(hid_OBJS)
 	@echo "LINK   " $@
-	$Qg++ $(CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
+	$Q$(CXX) $(CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
 
 $(hid_OBJS): $O
 
 $O%.o: %.cc
 	@echo "COMPILE" $@
-	$Qg++ -c $(CFLAGS) -o $@ $<
+	$Q$(CXX) -c $(CFLAGS) -o $@ $<
 
 $O:
 	@echo "MKDIR  " $@
