@@ -10,7 +10,6 @@
    -----------
 
    g++ -o hid main.cc -lhidapi -std=c++11
-   g++ -o hid main.cc hid-osx.cc -lhidapi -std=c++11 --framework IOKit --framework Core
    g++ -o hid main.c hid-windows.cc -std=c++11
 
 */
@@ -40,7 +39,7 @@ int main (int argc, const char** argv)
   {
     auto devices = HID::enumerate ();
 
-    printf ("devices[%d]\n", devices ? devices->size () : 0);
+    printf ("devices[%d]\n", devices ? int (devices->size ()) : 0);
     if (devices)
       for (auto dev : *devices) {
         printf ("dev %s %s %s\n",
@@ -51,7 +50,8 @@ int main (int argc, const char** argv)
   }
 
 
-  auto d = HID::open ("USB_05ac_0262_1d182000");
+  //  auto d = HID::open ("USB_05ac_0262_1d182000");
+  auto d = HID::open ("USB_03eb_2402_14210000");
   printf ("d %p\n", d);
 
   exit (0);
