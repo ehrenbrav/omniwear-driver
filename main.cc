@@ -53,6 +53,12 @@ int main (int argc, const char** argv)
   //  auto d = HID::open ("USB_05ac_0262_1d182000");
   auto d = HID::open ("USB_03eb_2402_14210000");
   printf ("d %p\n", d);
+  if (d)
+    HID::write (d, 1, "hi", 2);
+
+  int c = 1000;
+  while (c--)
+    HID::service ();
 
   exit (0);
 }
