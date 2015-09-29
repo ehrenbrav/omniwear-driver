@@ -17,22 +17,29 @@
    =====
 
    o libhid and others.  While there are cross-platform libraries for
-     managing the HID interface; they are in C; we've found errors in
-     their constructions; we want type safety as much as we can; we
-     don't want the 'library' to spawn threads; we will offer a C
-     interface for compatibity on top of the C++ interface.  Also, we
-     don't want another DLL.  This code should be linked into the
-     application.
+     managing the HID interface:
+       o They are in C
+       o We've found errors in their constructions
+       o We want type safety as much as we can
+       o We don't want the 'library' to spawn threads
+       o We will offer a C interface on top of the C++
+       o We don't want another DLL
+     This code should be linked into the application.
 
    o UTF-8.  To the best of our ability, we will offer UTF-8 strings
      instead of wide-character strings.  Doing so should smooth out
-     the differenced between the platforms.  We *might* need to
+     the differences between the platforms.  We *might* need to
      back-pedal on this if Windows turns out to be problematic.
 
    o Threadless.  To the best of our ability, this library (of sorts)
      will be threadless.  Each platform specific interface sprouts a
      service() call that the user can either invoke by hand or place
      in a thread to perform operations that the library requires.
+
+   o open with DeviceInfo?  This would be nice, to open a device
+     during a scan of enumerated, connected devices.  Sadly, we don't
+     have the OS handle so we cannot do this.  It's a minor
+     inefficiency that isn't terribly easy to eliminate.
 
 */
 
@@ -87,7 +94,8 @@ namespace HID {
   };
 
   std::vector<DeviceInfo*>* enumerate (uint16_t vid = 0, uint16_t pid = 0);
-  Device* open (uint16_t vid, uint16_t pid, const std::string& serial);
+  Device* open (uint16_t vid, uint16_t pid = 0,
+                const std::string& serial = std::string ());
   Device* open (const std::string& path);
 
   int write (Device*, uint8_t report, const char* rgb, size_t cb);
@@ -98,7 +106,7 @@ namespace HID {
   void release (std::vector<DeviceInfo*>*);
   void release (Device*);
 
-  void service ();
+  bool service ();
 }
 
 #endif

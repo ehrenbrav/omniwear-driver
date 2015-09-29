@@ -18,6 +18,9 @@
      product that offers such a ridiculously complex interface for
      enumerating attached USB HID devices.
 
+   o service() termination.  The service() call should have a limit on
+     the duration of the execution as either a loop count or a time.
+
 x86_64-w64-mingw32-g++ -o hid hid-windows.cc main.cc -std=c++11 -lhid -lsetupapi -static -static-libgcc -static-libstdc++
 */
 
@@ -241,9 +244,9 @@ namespace {
       return true;
     }
 
-    void service () {
+    bool service () {
       if (!init ())
-        return;
+        return false;
 
       int tries = 10;
       while (tries--) {
@@ -254,11 +257,12 @@ namespace {
         }
         else
           break;
-      } }
+      }
+      return false; }
 
 
     void enumerate (std::function<bool (HDEVINFO hDevInfo,
-                                        const HID::DeviceInfo& device_info)> f) {
+                                       const HID::DeviceInfo& device_info)> f) {
       if (!init ())
         return;
 

@@ -37,7 +37,7 @@ int main (int argc, const char** argv)
 #endif
 
   {
-    auto devices = HID::enumerate ();
+    auto devices = HID::enumerate (0x3eb);
 
     printf ("devices[%d]\n", devices ? int (devices->size ()) : 0);
     if (devices)
@@ -50,15 +50,19 @@ int main (int argc, const char** argv)
   }
 
 
-  //  auto d = HID::open ("USB_05ac_0262_1d182000");
-  auto d = HID::open ("USB_03eb_2402_14210000");
+//  auto d = HID::open ("USB_05ac_0262_1d182000");
+//  auto d = HID::open ("USB_03eb_2402_14110000");
+  auto d = HID::open (0x3eb, 0x02402);
   printf ("d %p\n", d);
-  if (d)
-    HID::write (d, 1, "hi", 2);
+  if (d) {
+    std::string s = "Now we have come to the end of the line.";
+    auto result = HID::write (d, 1, s.c_str (), s.length ());
+    printf ("write %d\n", result);
+  }
 
   int c = 1000;
-  while (c--)
-    HID::service ();
+  while (c-- && HID::service ())
+    ;
 
   exit (0);
 }

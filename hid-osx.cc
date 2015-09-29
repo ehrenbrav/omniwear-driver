@@ -22,6 +22,9 @@
    o UTF8.  All strings are converted to UTF8, even the USB ones that
      are UTF16 or something like it.
 
+   o service() termination.  The service() call should have a limit on
+     the duration of the execution as either a loop count or a time.
+
 */
 
 //#include "standard.h"
@@ -200,14 +203,15 @@ namespace HID {
         continue;
 
       DeviceInfo device_info {
-        OSXHID::vendor_id (dev),
-          OSXHID::product_id (dev),
-          OSXHID::path (dev), OSXHID::serial (dev),
-          OSXHID::version (dev),
-          OSXHID::manufacturer (dev),
-          OSXHID::product (dev),
-          OSXHID::usage_page (dev),
-          OSXHID::usage (dev) };
+        OSXHID::vendor_id    (dev),
+        OSXHID::product_id   (dev),
+        OSXHID::path         (dev),
+        OSXHID::serial       (dev),
+        OSXHID::version      (dev),
+        OSXHID::manufacturer (dev),
+        OSXHID::product      (dev),
+        OSXHID::usage_page   (dev),
+        OSXHID::usage        (dev) };
 
       if (!f (dev, device_info))
         break;
@@ -248,8 +252,9 @@ namespace HID {
         if (true
             && (!vid || vid == device_info.vid_)
             && (!pid || pid == device_info.pid_)
-            && (!serial.length () || serial.compare (device_info.serial_))
-            && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
+            && (  !serial.length ()
+                || serial.compare (device_info.serial_) == 0)
+            && (IOHIDDeviceOpen (os_dev, kIOHIDOptionsTypeSeizeDevice)
                 == kIOReturnSuccess)) {
           CFRetain (os_dev);
           result = new Device;
@@ -314,9 +319,9 @@ namespace HID {
   void release (Device* device) {
     delete device; }
 
-  void service () {
+  bool service () {
     if (!init ())
-      return;
+      return false;
 
     // *** FIXME: this should terminate even if there are events, no?
     while (1) {
@@ -329,6 +334,7 @@ namespace HID {
       }
       break;
     }
-  }
+
+    return false; }
 
 }
