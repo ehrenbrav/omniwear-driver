@@ -11,10 +11,18 @@ ifeq ("$(OS)","Darwin")
   override OS=osx
 endif
 
+ifeq ("$(OS)","Linux")
+  override OS=linux
+endif
+
 CFLAGS=-std=c++11 -O3 -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
+endif
+
+ifeq ("$(OS)","linux")
+CONFIG_LINUX=y
 endif
 
 hid_SRCS=main.cc
@@ -35,6 +43,12 @@ ifeq ("$(V)","1")
 Q=
 else
 Q=@
+endif
+
+ifeq ("$(OS)","linux")
+.PHONY: unsupported
+unsupported:
+	@echo "=== OS '$(OS)' unsupported"
 endif
 
 .PHONY: all

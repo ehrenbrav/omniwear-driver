@@ -141,7 +141,6 @@ namespace {
     return std::string ();
   }
 
-
   struct Handler {
     bool failed_;
     GUID guid_;
@@ -261,8 +260,9 @@ namespace {
       return false; }
 
 
-    void enumerate (std::function<bool (HDEVINFO hDevInfo,
-                                       const HID::DeviceInfo& device_info)> f) {
+    void enumerate (std::function<bool
+                    (HDEVINFO hDevInfo,
+                     const HID::DeviceInfo& device_info)> f) {
       if (!init ())
         return;
 
