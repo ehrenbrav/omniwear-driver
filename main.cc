@@ -20,6 +20,12 @@
 //#include <hidapi/hidapi.h>
 #include "hid.h"
 
+void service () {
+  int c = 1000;
+  while (c-- && HID::service ())
+    ;
+}
+
 int main (int argc, const char** argv)
 {
 //  auto result = hid_init ();
@@ -55,14 +61,28 @@ int main (int argc, const char** argv)
   auto d = HID::open (0x3eb, 0x02402);
   printf ("d %p\n", d);
   if (d) {
-    std::string s = "Now we have come to the end of the line.";
-    auto result = HID::write (d, 1, s.c_str (), s.length ());
-    printf ("write %d\n", result);
+    if (0){
+      std::string s = "Now we have come to the end of the line.";
+      auto result = HID::write (d, s.c_str (), s.length ());
+      printf ("write %d\n", result);
+    }
+    {
+      std::string s = "\x02\x01\x02     ";
+      auto result = HID::write (d, s.c_str (), s.length ());
+      printf ("write %d\n", result);
+    }
+    {
+      std::string s = "\x02\x02\x01     ";
+      auto result = HID::write (d, s.c_str (), s.length ());
+      printf ("write %d\n", result);
+    }
+    {
+      std::string s = "\x04\x10\x01\x02\x03   ";
+      auto result = HID::write (d, s.c_str (), s.length ());
+      printf ("write %d\n", result);
+    }
   }
 
-  int c = 1000;
-  while (c-- && HID::service ())
-    ;
 
   exit (0);
 }
