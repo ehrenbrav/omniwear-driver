@@ -4,6 +4,7 @@
 #
 
 O=o/
+TARGET=omni
 
 OS=$(shell uname -s)
 
@@ -38,9 +39,9 @@ Q=@
 endif
 
 .PHONY: all
-all: $Ohid
+all: $O$(TARGET)
 
-$Ohid: $(hid_OBJS)
+$O$(TARGET): $(hid_OBJS)
 	@echo "LINK   " $@
 	$Qg++ $(CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
 
