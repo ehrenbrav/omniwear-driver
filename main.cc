@@ -132,6 +132,8 @@ void op_config (ArgList& args) {
   send_config_motor (d.get (), motor, duty);
 }
 
+/** Around the head demo.  Continuous triggering of haptic motors in
+    order with a set duration for each activation. */
 void op_d_0 (ArgList& args) {
   if (args.size () < 4)
     usage ();
