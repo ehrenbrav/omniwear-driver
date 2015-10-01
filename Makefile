@@ -4,10 +4,10 @@
 #
 
 O=o/
-TARGET=omni
-EXE=
 
 OS=$(shell uname -s)
+hid_TARGET=omni$(EXE)
+dll_TARGET=omniwear_sdk$(SO)
 
 ifeq ("$(OS)","Darwin")
   override OS=osx
@@ -25,12 +25,13 @@ CFLAGS=-std=c++14 -O3 -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
+SO=.so
 endif
 
 ifeq ("$(OS)","win")
 CONFIG_WINDOWS=y
 COMPILER_PREFIX=x86_64-w64-mingw32-
-override EXE=.exe
+SO=.dll
 endif
 
 ifeq ("$(OS)","linux")
@@ -40,7 +41,6 @@ endif
 OBJS=$(patsubst %.c,$O%.o, \
      $(patsubst %.cc,$O%.o, \
      $($1_SRCS)))
-
 
 hid_SRCS=main.cc omniwear.cc
 
@@ -57,7 +57,7 @@ hid_LIBS+=$(hid_LIBS-y)
 hid_OBJS:=$(call OBJS,hid)
 
 
-dll_SRCS=omniwear_SDK.cc
+dll_SRCS=omniwear_SDK.cc omniwear.cc
 
 dll_SRCS-$(CONFIG_OSX)=hid-osx.cc
 dll_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
@@ -67,10 +67,12 @@ dll_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
 
 dll_SRCS+=$(dll_SRCS-y)
-dlld_LIBS+=$(dll_LIBS-y)
+dll_LIBS+=$(dll_LIBS-y)
 
 dll_OBJS:=$(call OBJS,dll)
+dll_CFLAGS:=-shared -Wl,-soname,$(dll_TARGET)
 
+#CFLAGS+=-fPIC
 
 CXX=$(COMPILER_PREFIX)g++
 
@@ -87,13 +89,17 @@ unsupported:
 endif
 
 .PHONY: all
-all: $O$(TARGET)$(EXE)
+all: $O$(hid_TARGET) $O$(dll_TARGET)
 
-$O$(TARGET)$(EXE): $(hid_OBJS)
+$O$(hid_TARGET): $(hid_OBJS)
 	@echo "LINK   " $@
-	$Q$(CXX) $(CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
+	$Q$(CXX) $(CFLAGS) $(hid_CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
 
-$(hid_OBJS): $O
+$O$(dll_TARGET): $(dll_OBJS)
+	@echo "LINK   " $@
+	$Q$(CXX) $(CFLAGS) $(dll_CFLAGS) -o $@ $(dll_OBJS) $(dll_LIBS)
+
+$(hid_OBJS) $(dll_OBJS): $O
 
 $O%.o: %.cc
 	@echo "COMPILE" $@
