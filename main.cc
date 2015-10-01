@@ -30,7 +30,6 @@ void service () {
 
 enum {
   op_null  = 0,
-  op_set,
   op_reset,
   op_list,
   op_demo_0,
