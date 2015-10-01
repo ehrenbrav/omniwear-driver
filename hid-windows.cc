@@ -52,28 +52,22 @@ extern "C" {
 #endif
 
 namespace HID {
-  struct DeviceImpl {
-    HANDLE h_;
-    ~DeviceImpl () {
-      if (h_) {
-        CloseHandle (h_);
-        h_ = 0; } }
+  struct Device::Impl {
+    HANDLE h_ = INVALID_HANDLE_VALUE;
+    Impl () {}
+    ~Impl () {
+      if (h_ != INVALID_HANDLE_VALUE)
+        CloseHandle (h_); }
   };
 
   Device::Device () {
-    impl_ = new DeviceImpl; }
-
-  Device::~Device () {
-    if (impl_) {
-      delete impl_;
-      impl_ = nullptr;
-    }
-  }
+    impl_ = std::make_unique<Device::Impl> (); }
+  Device::~Device () {}
 }
 
 namespace {
 
-  void bzero (void* pv, size_t cb) {
+  inline void bzero (void* pv, size_t cb) {
     memset (pv, 0, cb); }
 
   void print_error (DWORD dw) {
@@ -345,11 +339,12 @@ namespace {
     }
 #endif
 
-    std::vector<HID::DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
+    HID::DevicesP enumerate (uint16_t vid, uint16_t pid) {
       if (!init ())
         return nullptr;
 
-      auto devices = new std::vector<HID::DeviceInfo*>;
+      auto devices
+        = std::make_unique <std::vector<std::unique_ptr<HID::DeviceInfo>>>();
 
       enumerate ([&] (HDEVINFO hDevInfo,
                       const HID::DeviceInfo& device_info){
@@ -361,22 +356,46 @@ namespace {
                        || (device_info.vid_ == 0 && device_info.pid_ == 0)
                        )
                      return true;
-                   devices->push_back (new HID::DeviceInfo (device_info));
+                   devices->push_back
+                     (std::make_unique<HID::DeviceInfo> (device_info));
                    return true;
                  });
 
       return devices;
     }
 
-    HID::Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
-      return nullptr; }
+    HID::DeviceP open (uint16_t vid, uint16_t pid, const std::string& serial) {
+      if (!init ())
+        return nullptr;
 
-    HID::Device* open (const std::string& path) {
+      HID::DeviceP device = nullptr;
+
+      enumerate ([&] (HDEVINFO hDevInfo,
+                      const HID::DeviceInfo& device_info){
+                   if (false
+                       // Discard devices that don't match selection criteria
+                       || (vid && vid != device_info.vid_)
+                       || (pid && pid != device_info.pid_)
+                       // Discard devices without VID/PID
+                       || (device_info.vid_ == 0 && device_info.pid_ == 0)
+                       )
+                     return true;
+                   HANDLE h = open_path (device_info.path_.c_str (), false);
+                   if (h != INVALID_HANDLE_VALUE) {
+                     device = std::make_unique<HID::Device> ();
+                     device->impl_->h_ = h;
+                     return false;
+                   }
+                   return true;
+                 });
+      return device; }
+
+    HID::DeviceP open (const std::string& path) {
       HANDLE h = open_path (path.c_str (), false);
       if (h == INVALID_HANDLE_VALUE)
         return nullptr;
 
-      auto device = new HID::Device;
+      HID::DeviceP device = std::make_unique<HID::Device> ();
       device->impl_->h_ = h;
       return device; }
 
@@ -387,23 +406,25 @@ namespace HID {
   bool init () { return handler$.init (); }
   void release () {}
 
-  std::vector<DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
+  DevicesP enumerate (uint16_t vid, uint16_t pid) {
     return handler$.enumerate (vid, pid); }
 
-  Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
+  DeviceP open (uint16_t vid, uint16_t pid, const std::string& serial) {
     return handler$.open (vid, pid, serial); }
-  Device* open (const std::string& path) {
+  DeviceP open (const std::string& path) {
     return handler$.open (path); }
 
-  int write (Device*, uint8_t report, const char* rgb, size_t cb) {
-    return 0; }
-  int write (Device*, const char* rgb, size_t cb) {
-    return 0; }
+  int write (const Device* device, uint8_t report, const char* rgb, size_t cb) {
+    return HidD_SetOutputReport (device->impl_->h_, PVOID (rgb), cb)
+      ? cb : 0; }
+  int write (const Device* device, const char* rgb, size_t cb) {
+    return HidD_SetOutputReport (device->impl_->h_, PVOID (rgb), cb)
+      ? cb : 0; }
 
-  int read (Device*, char* rgb, size_t cb);
+  int read (const Device*, char* rgb, size_t cb);
 
-  void release (std::vector<DeviceInfo*>*);
-  void release (Device*);
+///  void release (std::vector<DeviceInfo*>*);
+//  void release (Device*);
 
   bool service () {
     return handler$.service (); }

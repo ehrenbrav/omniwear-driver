@@ -53,6 +53,7 @@
 #if defined (__cplusplus)
 # include <string>
 # include <vector>
+# include <memory>
 #endif
 
 /* ----- Macros */
@@ -86,25 +87,28 @@ namespace HID {
       product_ (product), usage_page_ (usage_page), usage_ (usage) {}
   };
 
-  struct DeviceImpl;
   struct Device {
     Device ();
     ~Device ();
-    DeviceImpl* impl_;
+    class Impl;
+    std::unique_ptr<Impl> impl_;
   };
 
-  std::vector<DeviceInfo*>* enumerate (uint16_t vid = 0, uint16_t pid = 0);
-  Device* open (uint16_t vid, uint16_t pid = 0,
+  using DeviceP = std::unique_ptr<Device>;
+  using DevicesP = std::unique_ptr<std::vector<std::unique_ptr<DeviceInfo>>>;
+
+  DevicesP enumerate (uint16_t vid = 0, uint16_t pid = 0);
+  DeviceP  open (uint16_t vid, uint16_t pid = 0,
                 const std::string& serial = std::string ());
-  Device* open (const std::string& path);
+  DeviceP  open (const std::string& path);
 
-  int write (Device*, uint8_t report, const char* rgb, size_t cb);
-  int write (Device*, const char* rgb, size_t cb);
+  int write (const Device*, uint8_t report, const char* rgb, size_t cb);
+  int write (const Device*, const char* rgb, size_t cb);
 
-  int read (Device*, char* rgb, size_t cb);
+  int read (const Device*, char* rgb, size_t cb);
 
-  void release (std::vector<DeviceInfo*>*);
-  void release (Device*);
+//  void release (std::vector<DeviceInfo*>*);
+//  void release (Device*);
 
   bool service ();
 }

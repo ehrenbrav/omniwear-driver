@@ -20,7 +20,7 @@ ifeq ("$(OS)","Windows")
   override OS=win
 endif
 
-CFLAGS=-std=c++11 -O3 -g
+CFLAGS=-std=c++14 -O3 -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
