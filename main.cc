@@ -33,7 +33,10 @@ enum {
   op_set,
   op_reset,
   op_list,
+  op_demo_0,
 };
+
+using ArgList = std::vector<std::string>;
 
 void usage () {
 
@@ -44,8 +47,90 @@ void usage () {
           "  -r              - Reset all motors\n"
           "  -l              - List USB devices\n"
           "  -v              - Show program version\n"
+          "  -d M..	     - Demo modes\n"
+          "     0 T I	       Mode 0; run each motor in order for T seconds\n"
+          "                            at I intensity\n"
           );
   exit (0);
+}
+
+HID::DeviceP open_cap () {
+  auto d = HID::open (0x3eb, 0x2402);
+
+  if (!d) {
+    printf ("unable to find omniwear device\n");
+    exit (1);
+  }
+
+  return std::move (d);
+}
+
+void preamble (HID::Device* d) {
+  // Poll for version
+  {
+    std::string s = "\x02\x01\x02     ";
+    auto result = HID::write (d, s.c_str (), s.length ());
+    //    printf ("write %d\n", result);
+  }
+  // Send our version
+  {
+    std::string s = "\x02\x02\x01     ";
+    auto result = HID::write (d, s.c_str (), s.length ());
+    //printf ("write %d\n", result);
+  }
+}
+
+void op_v (ArgList& args) {
+  printf ("omni HID test, version 0.3\n");
+  exit (0);
+}
+
+void op_l (ArgList& args) {
+  auto devices = HID::enumerate ();
+
+  printf ("Found %d HID devices\n", devices ? int (devices->size ()) : 0);
+  if (devices)
+    for (auto& dev : *devices) {
+      printf ("dev %s %s %s\n",
+              dev->path_.c_str (),
+              dev->manufacturer_.c_str (),
+              dev->product_.c_str ());
+    }
+}
+
+void op_r (ArgList& args) {
+  auto d = open_cap ();
+  printf ("reset motors\n");
+  preamble (d.get ());
+  {
+    std::array<char,8> msg = { 0x1, 0x11 };
+    auto result = HID::write (d.get (), &msg[0], msg.size ());
+//      printf ("write %d\n", result);
+  }
+}
+
+void op_config (ArgList& args) {
+  if (args.size () < 2)
+    usage ();
+
+  int motor = strtoul (args[0].c_str (), nullptr, 0);
+  int duty  = strtoul (args[1].c_str (), nullptr, 0);
+
+  if (motor < 0 || motor > 13 || duty < 0 || duty > 100)
+    usage ();
+
+  auto d = open_cap ();
+  preamble (d.get ());
+
+  char frequency = 0xff;
+
+  printf ("set motor %d  duty %d%%\n", motor, duty);
+  {
+    std::array<char,8> msg = { 0x4, 0x10,
+                               char (motor), char (duty*255/100), frequency };
+    auto result = HID::write (d.get (), &msg[0], msg.size ());
+    //      printf ("write %d\n", result);
+  }
 }
 
 int main (int argc, const char** argv)
@@ -54,107 +139,29 @@ int main (int argc, const char** argv)
   int duty = 0;
   int op = 0;
 
-  for (--argc, ++argv; argc > 0; --argc, ++argv) {
-    if (strcasecmp (argv[0], "-r") == 0) {
-      op = op_reset;
+  ArgList args;
+
+  for (--argc, ++argv; argc > 0; --argc, ++argv)
+    args.push_back (*argv);
+
+  if (args[0][0] == '-') {
+    switch (args[0][1]) {
+    case 'l':
+      op_l (args);
+      break;
+    case 'v':
+      op_v (args);
+      break;
+    case 'r':
+      op_r (args);
+      break;
+    default:
+      printf ("unknown switch\n");
       break;
     }
-    if (strcasecmp (argv[0], "-l") == 0) {
-      op = op_list;
-      break;
-    }
-    if (strcasecmp (argv[0], "-v") == 0) {
-      printf ("omni HID test, version 0.2\n");
-      exit (0);
-      break;
-    }
-    int value = strtoul (argv[0], nullptr, 0);
-
-    if (motor == -1) {
-      motor = value;
-      op = op_set;
-      continue;
-    }
-
-    if (op == op_set && motor != -1)
-      duty = value;
   }
-
-  if (op == op_null)
-    usage ();
-
-  if (op == op_set && (motor < 0 || motor > 13 || duty < 0 || duty > 100))
-    usage ();
-
-  //  printf ("op %d\n", op);
-
-  //  auto d = HID::open ("USB_05ac_0262_1d182000");
-  //  auto d = HID::open ("USB_03eb_2402_14110000");
-  auto d = HID::open (0x3eb, 0x2402);
-  if (!d && op != op_list) {
-    printf ("unable to find omniwear device\n");
-    exit (1);
-  }
-
-//  printf ("d %p\n", d.get ());
-
-  char frequency = 255;
-
-  if (d) {
-    if (0){
-      std::string s = "Now we have come to the end of the line.";
-      auto result = HID::write (d.get (), s.c_str (), s.length ());
-      //    printf ("write %d\n", result);
-    }
-    {
-      std::string s = "\x02\x01\x02     ";
-      auto result = HID::write (d.get (), s.c_str (), s.length ());
-      //    printf ("write %d\n", result);
-    }
-    {
-      std::string s = "\x02\x02\x01     ";
-      auto result = HID::write (d.get (), s.c_str (), s.length ());
-      //printf ("write %d\n", result);
-    }
-  }
-
-  switch (op) {
-  case op_list:
-    {
-      auto devices = HID::enumerate ();
-
-      printf ("devices[%d]\n", devices ? int (devices->size ()) : 0);
-      if (devices)
-        for (auto& dev : *devices) {
-          printf ("dev %s %s %s\n",
-                  dev->path_.c_str (),
-                  dev->manufacturer_.c_str (),
-                  dev->product_.c_str ());
-        }
-    }
-    break;
-
-  case op_reset:
-    printf ("reset motors\n");
-    {
-      std::array<char,8> msg = { 0x1, 0x11 };
-      auto result = HID::write (d.get (), &msg[0], msg.size ());
-//      printf ("write %d\n", result);
-    }
-    break;
-
-  case op_set:
-    printf ("set motor %d  duty %d%%\n", motor, duty);
-    {
-      std::array<char,8> msg = { 0x4, 0x10,
-                                 char (motor), char (duty*255/100), frequency };
-      auto result = HID::write (d.get (), &msg[0], msg.size ());
-      //      printf ("write %d\n", result);
-    }
-    break;
-  }
-
-//  service ();
+  else
+    op_config (args);
 
   exit (0);
 }

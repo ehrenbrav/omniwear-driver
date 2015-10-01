@@ -5,6 +5,7 @@
 
 O=o/
 TARGET=omni
+EXE=
 
 OS=$(shell uname -s)
 
@@ -29,6 +30,7 @@ endif
 ifeq ("$(OS)","win")
 CONFIG_WINDOWS=y
 COMPILER_PREFIX=x86_64-w64-mingw32-
+override EXE=.exe
 endif
 
 ifeq ("$(OS)","linux")
@@ -68,9 +70,9 @@ unsupported:
 endif
 
 .PHONY: all
-all: $O$(TARGET)
+all: $O$(TARGET)$(EXE)
 
-$O$(TARGET): $(hid_OBJS)
+$O$(TARGET)$(EXE): $(hid_OBJS)
 	@echo "LINK   " $@
 	$Q$(CXX) $(CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
 
