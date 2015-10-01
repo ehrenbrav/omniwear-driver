@@ -54,7 +54,6 @@ extern "C" {
 namespace HID {
   struct Device::Impl {
     HANDLE h_ = INVALID_HANDLE_VALUE;
-    Impl () {}
     ~Impl () {
       if (h_ != INVALID_HANDLE_VALUE)
         CloseHandle (h_); }
@@ -62,7 +61,7 @@ namespace HID {
 
   Device::Device () {
     impl_ = std::make_unique<Device::Impl> (); }
-  Device::~Device () {}
+  Device::~Device () {}         // Required for unique_ptr Impl
 }
 
 namespace {

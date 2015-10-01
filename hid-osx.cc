@@ -147,24 +147,16 @@ namespace {
 
 namespace HID {
 
-  struct DeviceImpl {
-    IOHIDDeviceRef os_dev_;
-    ~DeviceImpl () {
-      if (os_dev_) {
-        CFRelease(os_dev_);
-        os_dev_ = 0; } }
+  struct Device::Impl {
+    IOHIDDeviceRef os_dev_ = 0;
+    ~Impl () {
+      if (os_dev_ != 0)
+        CFRelease (os_dev_); }
   };
 
-
   Device::Device () {
-    impl_ = new DeviceImpl; }
-
-  Device::~Device () {
-    if (impl_) {
-      delete impl_;
-      impl_ = nullptr;
-    }
-  }
+    impl_ = std::make_unique<Device::Impl> (); }
+  Device::~Device () {}         // Required for unique_ptr Impl
 
   bool init () {
     if (!hid_manager) {
@@ -220,11 +212,12 @@ namespace HID {
     CFRelease (device_set);
   }
 
-  std::vector<DeviceInfo*>* enumerate (uint16_t vid, uint16_t pid) {
+  HID::DevicesP enumerate (uint16_t vid, uint16_t pid) {
     if (!init ())
       return nullptr;
 
-    auto devices = new std::vector<DeviceInfo*>;
+    auto devices
+      = std::make_unique <std::vector<std::unique_ptr<HID::DeviceInfo>>>();
 
     enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
         if (false
@@ -235,18 +228,18 @@ namespace HID {
             || (device_info.vid_ == 0 && device_info.pid_ == 0)
             )
           return true;
-        devices->push_back (new DeviceInfo (device_info));
+        devices->push_back (std::make_unique<HID::DeviceInfo> (device_info));
         return true;
       });
 
     return devices;
   }
 
-  Device* open (uint16_t vid, uint16_t pid, const std::string& serial) {
+  DeviceP open (uint16_t vid, uint16_t pid, const std::string& serial) {
     if (!init ())
       return nullptr;
 
-    Device* result = nullptr;
+    DeviceP device = nullptr;
 
     enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
         if (true
@@ -257,35 +250,37 @@ namespace HID {
             && (IOHIDDeviceOpen (os_dev, kIOHIDOptionsTypeSeizeDevice)
                 == kIOReturnSuccess)) {
           CFRetain (os_dev);
-          result = new Device;
-          result->impl_->os_dev_ = os_dev;
+          device = std::make_unique<HID::Device> ();
+          device->impl_->os_dev_ = os_dev;
+          return false;
         }
-        return !result;
+        return true;
       });
 
-    return result; }
+    return device; }
 
-  Device* open (const std::string& path) {
+  DeviceP open (const std::string& path) {
     if (!init ())
       return nullptr;
 
-    Device* result = nullptr;
+    DeviceP device = nullptr;
 
     enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
         if (path.compare (device_info.path_) == 0
             && (IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice)
                 == kIOReturnSuccess)) {
           CFRetain (os_dev);
-          result = new Device;
-          result->impl_->os_dev_ = os_dev;
+          device = std::make_unique<HID::Device> ();
+          device->impl_->os_dev_ = os_dev;
+          return false;
         }
-        return !result;
+        return true;
       });
 
-    return result;
+    return device;
   }
 
-  int write (Device* device, uint8_t report, const char* rgb, size_t cb) {
+  int write (const Device* device, uint8_t report, const char* rgb, size_t cb) {
     if (!device)
       return -1;
     auto result = IOHIDDeviceSetReport (device->impl_->os_dev_,
@@ -294,10 +289,10 @@ namespace HID {
                                         (uint8_t*) rgb, cb);
     return result == kIOReturnSuccess ? cb : -1; }
 
-  int write (Device* device, const char* rgb, size_t cb) {
+  int write (const Device* device, const char* rgb, size_t cb) {
     return write (device, 0, rgb, cb); }
 
-  int read (Device* device, uint8_t report, char* rgb, size_t cb) {
+  int read (const Device* device, uint8_t report, char* rgb, size_t cb) {
     if (!device)
       return -1;
 
@@ -307,17 +302,6 @@ namespace HID {
                                         report,
                                         (uint8_t*) rgb, &count);
     return result == kIOReturnSuccess ? count : -1; }
-
-  void release (std::vector<Device*>* devices) {
-    if (devices) {
-      for (auto dev : *devices)
-        delete dev;
-      delete devices;
-    }
-  }
-
-  void release (Device* device) {
-    delete device; }
 
   bool service () {
     if (!init ())
