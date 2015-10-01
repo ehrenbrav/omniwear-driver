@@ -37,7 +37,12 @@ ifeq ("$(OS)","linux")
 CONFIG_LINUX=y
 endif
 
-hid_SRCS=main.cc
+OBJS=$(patsubst %.c,$O%.o, \
+     $(patsubst %.cc,$O%.o, \
+     $($1_SRCS)))
+
+
+hid_SRCS=main.cc omniwear.cc
 
 hid_SRCS-$(CONFIG_OSX)=hid-osx.cc
 hid_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
@@ -49,11 +54,23 @@ hid_LIBS-$(CONFIG_WINDOWS)= \
 hid_SRCS+=$(hid_SRCS-y)
 hid_LIBS+=$(hid_LIBS-y)
 
-OBJS=$(patsubst %.c,$O%.o, \
-     $(patsubst %.cc,$O%.o, \
-     $($1_SRCS)))
-
 hid_OBJS:=$(call OBJS,hid)
+
+
+dll_SRCS=omniwear_SDK.cc
+
+dll_SRCS-$(CONFIG_OSX)=hid-osx.cc
+dll_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
+
+dll_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
+dll_LIBS-$(CONFIG_WINDOWS)= \
+	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+
+dll_SRCS+=$(dll_SRCS-y)
+dlld_LIBS+=$(dll_LIBS-y)
+
+dll_OBJS:=$(call OBJS,dll)
+
 
 CXX=$(COMPILER_PREFIX)g++
 

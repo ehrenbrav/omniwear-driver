@@ -463,5 +463,4 @@ namespace HID {
 
   bool service () {
     return handler$.service (); }
-
 }

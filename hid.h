@@ -109,6 +109,7 @@ namespace HID {
   int read (const Device*, char* rgb, size_t cb);
 
   bool service ();
+
 }
 
 #endif

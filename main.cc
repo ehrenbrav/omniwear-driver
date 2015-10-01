@@ -19,6 +19,7 @@
 #include <stdint.h>
 //#include <hidapi/hidapi.h>
 #include "hid.h"
+#include "omniwear.h"
 #include <array>
 #include <unistd.h>
 
@@ -53,8 +54,8 @@ void usage () {
   exit (0);
 }
 
-HID::DeviceP open_cap () {
-  auto d = HID::open (0x3eb, 0x2402);
+Omniwear::DeviceP open_cap () {
+  auto d = Omniwear::open ();
 
   if (!d) {
     printf ("unable to find omniwear device\n");
@@ -64,34 +65,14 @@ HID::DeviceP open_cap () {
   return std::move (d);
 }
 
-int send_reset_motors (HID::Device* d) {
-  std::array<char,8> msg = { 0x1, 0x11 };
-  return HID::write (d, &msg[0], msg.size ());
-}
+bool send_reset_motors (Omniwear::Device* d) {
+  return Omniwear::reset_motors (d); }
 
-int send_config_motor (HID::Device* d, int motor, int duty) {
-  std::array<char,8> msg = { 0x4, 0x10,
-                             char (motor), char (duty*255/100), char (0xff) };
-  return HID::write (d, &msg[0], msg.size ());
-}
-
-void send_preamble (HID::Device* d) {
-  // Poll for version
-  {
-    std::string s = "\x02\x01\x02     ";
-    auto result = HID::write (d, s.c_str (), s.length ());
-    //    printf ("write %d\n", result);
-  }
-  // Send our version
-  {
-    std::string s = "\x02\x02\x01     ";
-    auto result = HID::write (d, s.c_str (), s.length ());
-    //printf ("write %d\n", result);
-  }
-}
+int send_config_motor (Omniwear::Device* d, int motor, int duty) {
+  return Omniwear::configure_motor (d, motor, duty); }
 
 void op_v (ArgList& args) {
-  printf ("omni HID test, version 0.3\n");
+  printf ("omni HID test, version 0.4\n");
   exit (0);
 }
 
@@ -111,7 +92,6 @@ void op_l (ArgList& args) {
 void op_r (ArgList& args) {
   auto d = open_cap ();
   printf ("reset motors\n");
-  send_preamble (d.get ());
   send_reset_motors (d.get ());
 }
 
@@ -127,7 +107,6 @@ void op_config (ArgList& args) {
 
   auto d = open_cap ();
   printf ("set motor %d  duty %d%%\n", motor, duty);
-  send_preamble (d.get ());
   send_config_motor (d.get (), motor, duty);
 }
 
@@ -144,7 +123,6 @@ void op_d_0 (ArgList& args) {
     usage ();
 
   auto d = open_cap ();
-  send_preamble (d.get ());
 
   while (true)
     for (auto motor = 0; motor < 14; ++motor) {
