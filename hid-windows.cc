@@ -54,6 +54,7 @@ extern "C" {
 namespace HID {
   struct Device::Impl {
     HANDLE h_ = INVALID_HANDLE_VALUE;
+    size_t generic_ep_out_length_ = 0;
     ~Impl () {
       if (h_ != INVALID_HANDLE_VALUE)
         CloseHandle (h_); }
@@ -134,7 +135,8 @@ namespace {
   }
 
   struct Handler {
-    bool failed_;
+    bool failed_ = false;
+    bool init_ = false;
     GUID guid_;
     HWND hwndNotify_;
     HANDLE hNotify_;
@@ -172,12 +174,10 @@ namespace {
       return DefWindowProc (hwnd, msg, wParam, lParam); }
 
     bool init () {
-      return true;
-
-      printf ("init (%d)\n", failed_);
-
       if (failed_)
         return false;
+      if (init_)
+        return true;
 
       static constexpr char szTitle[] = "hid-window";
       static constexpr char szClass[] = "hid-window-class";
@@ -193,14 +193,14 @@ namespace {
           szClass,            // szClass
           };
 
-      printf ("init: register class\n");
+//      printf ("init: register class\n");
 
       if (!RegisterClassEx (&wc)) {
         failed_ = true;
         return false;
       }
 
-      printf ("init: create window\n");
+//      printf ("init: create window\n");
 
       hwndNotify_ = CreateWindowEx (0, szClass, szTitle,
                                     WS_OVERLAPPEDWINDOW,
@@ -221,17 +221,19 @@ namespace {
         { 0 }
       };
 
-      printf ("init: register notify\n");
+//      printf ("init: register notify\n");
 
       hNotify_ = RegisterDeviceNotificationA (hwndNotify_, &filter,
                                               DEVICE_NOTIFY_WINDOW_HANDLE);
-      printf ("hNotify %x\n", hNotify_);
+//      printf ("hNotify %x\n", hNotify_);
 
       if (!hNotify_) {
         failed_ = true;
         return false;
       }
-      printf ("init: success\n");
+//      printf ("init: success\n");
+
+      init_ = true;
       return true;
     }
 
@@ -305,15 +307,16 @@ namespace {
         // Build the information structure
         HID::DeviceInfo device_info {
           attr.VendorID,
-            attr.ProductID,
-            std::string (pdiDetail->DevicePath),
-            serial (h),
-            attr.VersionNumber,
-            manufacturer (h),
-            product (h),
-            caps.UsagePage,
-            caps.Usage
-            };
+          attr.ProductID,
+          std::string (pdiDetail->DevicePath),
+          serial (h),
+          attr.VersionNumber,
+          manufacturer (h),
+          product (h),
+          caps.UsagePage,
+          caps.Usage
+        };
+        device_info.generic_ep_out_length_ = caps.OutputReportByteLength;
 
         CloseHandle (h);
 
@@ -339,6 +342,7 @@ namespace {
 #endif
 
     HID::DevicesP enumerate (uint16_t vid, uint16_t pid) {
+//      printf ("enumerate\n");
       if (!init ())
         return nullptr;
 
@@ -347,6 +351,8 @@ namespace {
 
       enumerate ([&] (HDEVINFO hDevInfo,
                       const HID::DeviceInfo& device_info){
+//                   printf (" vid %x pid %x\n",
+//                           device_info.vid_, device_info.pid_);
                    if (false
                        // Discard devices that don't match selection criteria
                        || (vid && vid != device_info.vid_)
@@ -383,6 +389,8 @@ namespace {
                    if (h != INVALID_HANDLE_VALUE) {
                      device = std::make_unique<HID::Device> ();
                      device->impl_->h_ = h;
+                     device->impl_->generic_ep_out_length_
+                       = device_info.generic_ep_out_length_;
                      return false;
                    }
                    return true;
@@ -414,16 +422,44 @@ namespace HID {
     return handler$.open (path); }
 
   int write (const Device* device, uint8_t report, const char* rgb, size_t cb) {
-    return HidD_SetOutputReport (device->impl_->h_, PVOID (rgb), cb)
-      ? cb : 0; }
+    if (!device)
+      return 0;
+
+    OVERLAPPED ol;
+    bzero (&ol, sizeof (ol));
+
+    size_t length = device->impl_->generic_ep_out_length_;
+    if (cb > length - 1)
+      return -1;
+
+    char buffer[length];
+    std::fill (buffer, buffer + length, 0);
+    buffer[0] = report;
+    std::copy (rgb, rgb + cb, buffer + 1);
+
+    if (WriteFile (device->impl_->h_, PVOID (&buffer[0]), length, NULL, &ol))
+      return length;
+
+    if (GetLastError () != ERROR_IO_PENDING) {
+      print_error (GetLastError ());
+      return -1;
+    }
+
+    DWORD cbWritten = 0;
+    if (GetOverlappedResult (device->impl_->h_, &ol, &cbWritten, true))
+      return cbWritten;
+
+    print_error (GetLastError ());
+    return -1;
+  }
+
   int write (const Device* device, const char* rgb, size_t cb) {
-    return HidD_SetOutputReport (device->impl_->h_, PVOID (rgb), cb)
-      ? cb : 0; }
+    return write (device, 0, rgb, cb); }
 
-  int read (const Device*, char* rgb, size_t cb);
-
-///  void release (std::vector<DeviceInfo*>*);
-//  void release (Device*);
+  int read (const Device* device, char* rgb, size_t cb) {
+    if (!device)
+      return 0;
+    return 0; }
 
   bool service () {
     return handler$.service (); }

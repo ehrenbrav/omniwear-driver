@@ -64,7 +64,7 @@ int main (int argc, const char** argv)
       break;
     }
     if (strcasecmp (argv[0], "-v") == 0) {
-      printf ("omni HID test, version 0.1\n");
+      printf ("omni HID test, version 0.2\n");
       exit (0);
       break;
     }
@@ -86,59 +86,36 @@ int main (int argc, const char** argv)
   if (op == op_set && (motor < 0 || motor > 13 || duty < 0 || duty > 100))
     usage ();
 
-//  auto result = hid_init ();
-//  printf ("# hid_init %d\n", result);
+  //  printf ("op %d\n", op);
 
-#if 0
-  {
-    auto devices = hid_enumerate (0, 0);
-    printf ("# hid_enumerate %p\n", devices);
-    for (auto p = devices; p; p = p->next)
-      printf ("# device %p %04x:%04x %ls %ls %s\n",
-              p, p->vendor_id, p->product_id,
-              p->manufacturer_string, p->product_string, p->path);
-  }
-#endif
-
-  if (0) {
-    auto devices = HID::enumerate ();
-
-    printf ("devices[%d]\n", devices ? int (devices->size ()) : 0);
-    if (devices)
-      for (auto& dev : *devices) {
-        printf ("dev %s %s %s\n",
-                dev->path_.c_str (),
-                dev->manufacturer_.c_str (),
-                dev->product_.c_str ());
-      }
-  }
-
-
-//  auto d = HID::open ("USB_05ac_0262_1d182000");
-//  auto d = HID::open ("USB_03eb_2402_14110000");
+  //  auto d = HID::open ("USB_05ac_0262_1d182000");
+  //  auto d = HID::open ("USB_03eb_2402_14110000");
   auto d = HID::open (0x3eb, 0x2402);
-  if (d == 0 && op != op_list) {
+  if (!d && op != op_list) {
     printf ("unable to find omniwear device\n");
     exit (1);
   }
-//  printf ("d %p\n", d);
+
+//  printf ("d %p\n", d.get ());
 
   char frequency = 255;
 
-  if (0){
-    std::string s = "Now we have come to the end of the line.";
-    auto result = HID::write (d.get (), s.c_str (), s.length ());
-//    printf ("write %d\n", result);
-  }
-  {
-    std::string s = "\x02\x01\x02     ";
-    auto result = HID::write (d.get (), s.c_str (), s.length ());
-//    printf ("write %d\n", result);
-  }
-  {
-    std::string s = "\x02\x02\x01     ";
-    auto result = HID::write (d.get (), s.c_str (), s.length ());
-//printf ("write %d\n", result);
+  if (d) {
+    if (0){
+      std::string s = "Now we have come to the end of the line.";
+      auto result = HID::write (d.get (), s.c_str (), s.length ());
+      //    printf ("write %d\n", result);
+    }
+    {
+      std::string s = "\x02\x01\x02     ";
+      auto result = HID::write (d.get (), s.c_str (), s.length ());
+      //    printf ("write %d\n", result);
+    }
+    {
+      std::string s = "\x02\x02\x01     ";
+      auto result = HID::write (d.get (), s.c_str (), s.length ());
+      //printf ("write %d\n", result);
+    }
   }
 
   switch (op) {
@@ -172,11 +149,12 @@ int main (int argc, const char** argv)
       std::array<char,8> msg = { 0x4, 0x10,
                                  char (motor), char (duty*255/100), frequency };
       auto result = HID::write (d.get (), &msg[0], msg.size ());
-//      printf ("write %d\n", result);
+      //      printf ("write %d\n", result);
     }
     break;
   }
 
+//  service ();
 
   exit (0);
 }

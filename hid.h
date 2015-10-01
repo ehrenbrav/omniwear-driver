@@ -77,6 +77,7 @@ namespace HID {
     uint16_t usage_page_ = 0;
     uint16_t usage_ = 0;
     int interface_ = -1;
+    size_t generic_ep_out_length_ = 0;
 
     DeviceInfo (uint16_t vid, uint16_t pid, std::string path,
                 std::string serial, uint16_t version,
