@@ -15,6 +15,7 @@
 
 #include "hid.h"
 #include "omniwear.h"
+#include <array>
 
 namespace {
   void send_preamble (Omniwear::Device* d) {

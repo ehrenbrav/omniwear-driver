@@ -26,6 +26,7 @@ CFLAGS=-std=c++14 -O3 -g
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
 SO=.so
+CFLAGS+=-fPIC
 endif
 
 ifeq ("$(OS)","win")
@@ -42,6 +43,8 @@ OBJS=$(patsubst %.c,$O%.o, \
      $(patsubst %.cc,$O%.o, \
      $($1_SRCS)))
 
+# --- HID test program
+
 hid_SRCS=main.cc omniwear.cc
 
 hid_SRCS-$(CONFIG_OSX)=hid-osx.cc
@@ -57,22 +60,26 @@ hid_LIBS+=$(hid_LIBS-y)
 hid_OBJS:=$(call OBJS,hid)
 
 
+# --- SDK library
+
 dll_SRCS=omniwear_SDK.cc omniwear.cc
 
 dll_SRCS-$(CONFIG_OSX)=hid-osx.cc
 dll_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
+dll_CFLAGS-$(CONFIG_OSX):=-shared -dynamiclib -Wl,-undefined,dynamic_lookup
 
 dll_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 dll_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+dll_CFLAGS-$(CONFIG_WINDOWS):=-shared -Wl,-soname,$(dll_TARGET)
 
 dll_SRCS+=$(dll_SRCS-y)
 dll_LIBS+=$(dll_LIBS-y)
 
 dll_OBJS:=$(call OBJS,dll)
-dll_CFLAGS:=-shared -Wl,-soname,$(dll_TARGET)
+dll_CFLAGS+=$(dll_CFLAGS-y)
 
-#CFLAGS+=-fPIC
+
 
 CXX=$(COMPILER_PREFIX)g++
 
