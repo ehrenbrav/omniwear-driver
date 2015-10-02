@@ -21,7 +21,7 @@ ifeq ("$(OS)","Windows")
   override OS=win
 endif
 
-CFLAGS=-std=c++14 -O3 -g
+CFLAGS+=-std=c++14 -O3 # -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
@@ -70,7 +70,7 @@ dll_CFLAGS-$(CONFIG_OSX):=-shared -dynamiclib -Wl,-undefined,dynamic_lookup
 
 dll_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 dll_LIBS-$(CONFIG_WINDOWS)= \
-	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+	-lhid -lsetupapi -static-libgcc
 dll_CFLAGS-$(CONFIG_WINDOWS):=-shared -Wl,-soname,$(dll_TARGET)
 
 dll_SRCS+=$(dll_SRCS-y)
