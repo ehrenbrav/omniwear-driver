@@ -71,7 +71,19 @@ o Add the haptics code to darkplaces
 
   $ cd darkplaces
   $ git remote add haptics git@github.com:ehrenbrav/darkplaces.git
-  $ git fetch haptics
+  $ git fetch haptics haptics
   $ git checkout haptics
 
-o Copy the library
+o Copy the library to a place where the build can find it.
+
+o Rebuild
+
+  $ ./all compile
+
+o Update the resources so that we can see the haptics settings
+
+  $ cd xonotic/data/xonotic-data.pk3dir
+  $ git remote add haptics git@github.com:ehrenbrav/xonotic-data.pk3dir.git
+  $ git fetch haptics haptics
+  $ git checkout haptics
+
