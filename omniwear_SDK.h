@@ -129,7 +129,7 @@ typedef struct haptic_device_state_s {
   int haptic_effect_maps_len;
 
   // Handle for the haptic device.
-  omniwear_device_impl* device_impl;
+  struct omniwear_device_impl* device_impl;
 
   // Structures for the actual actuators.
   haptic_motor_t motors[NUMBER_OF_MOTORS];
