@@ -21,7 +21,7 @@
 #define normalize_vec3(v) {float length = (float) sqrt(dot_product((v),(v)));if (length) length = 1.0f / length;(v)[0] *= length;(v)[1] *= length;(v)[2] *= length;}
 
 #define DBG(a ...) \
-  printf(a)
+//  printf(a)
 
 typedef struct matrix4x4_s {
 
@@ -324,9 +324,9 @@ void close_omniwear_device(haptic_device_state_t *state) {
 
 void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 {
-  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
-       state, state && state->device_impl && state->device_impl->device
-       ? state->device_impl->device.get () : nullptr);
+//  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
+//       state, state && state->device_impl && state->device_impl->device
+//       ? state->device_impl->device.get () : nullptr);
 
   if (!state) {
     printf ("***ERR: invalid state\n");
@@ -355,10 +355,6 @@ void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 
 void reset_omniwear_device(haptic_device_state_t *state)
 {
-//  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
-//       state, state && state->device_impl && state->device_impl->device
-//       ? state->device_impl->device.get () : nullptr);
-
   if (!state) {
     printf ("***ERR: invalid state\n");
     return;

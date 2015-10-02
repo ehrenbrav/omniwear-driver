@@ -27,7 +27,6 @@
 
 */
 
-//#include "standard.h"
 #include "hid.h"
 
 // From featureful implementation
@@ -167,6 +166,7 @@ namespace HID {
                                         kIOHIDOptionsTypeNone);
       if (hid_manager) {
         IOHIDManagerSetDeviceMatching (hid_manager, NULL);
+        IOHIDManagerOpen (hid_manager, kIOHIDOptionsTypeNone);
         IOHIDManagerScheduleWithRunLoop (hid_manager, CFRunLoopGetCurrent (),
                                          kCFRunLoopDefaultMode);
       }
@@ -177,7 +177,7 @@ namespace HID {
     if (hid_manager) {
       IOHIDManagerUnscheduleFromRunLoop (hid_manager, CFRunLoopGetCurrent (),
                                          kCFRunLoopDefaultMode);
-//      IOHIDManagerClose (hid_manager, kIOHIDOptionsTypeNone);
+      IOHIDManagerClose (hid_manager, kIOHIDOptionsTypeNone);
       CFRelease (hid_manager);
       hid_manager = nullptr; } }
 
@@ -185,11 +185,10 @@ namespace HID {
     if (!init ())
       return;
 
-    service ();  // *** FIXME: should we do this or should we let the
+//    service ();  // *** FIXME: should we do this or should we let the
                  // *** application handle it?
 
     IOHIDManagerSetDeviceMatching (hid_manager, NULL);
-    IOHIDManagerOpen (hid_manager, kIOHIDOptionsTypeNone);
     CFSetRef device_set = IOHIDManagerCopyDevices (hid_manager);
 
     auto num_devices = CFSetGetCount (device_set);
@@ -216,7 +215,6 @@ namespace HID {
     }
 
     CFRelease (device_set);
-    IOHIDManagerClose (hid_manager, kIOHIDOptionsTypeNone);
   }
 
   HID::DevicesP enumerate (uint16_t vid, uint16_t pid) {
