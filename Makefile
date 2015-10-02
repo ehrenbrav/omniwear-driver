@@ -7,7 +7,7 @@ O=o/
 
 OS=$(shell uname -s)
 hid_TARGET=omni$(EXE)
-dll_TARGET=omniwear_sdk$(SO)
+dll_TARGET=libomniwear_sdk$(SO)
 
 ifeq ("$(OS)","Darwin")
   override OS=osx

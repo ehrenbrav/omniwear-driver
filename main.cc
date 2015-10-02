@@ -50,6 +50,7 @@ void usage () {
           "  -d M..	     - Demo modes\n"
           "     0 T I	       Mode 0; run each motor in order for T seconds\n"
           "                            at I intensity\n"
+          "  -h|?            - Show usage\n"
           );
   exit (0);
 }
@@ -143,8 +144,15 @@ int main (int argc, const char** argv)
   for (--argc, ++argv; argc > 0; --argc, ++argv)
     args.push_back (*argv);
 
+  if (!args.size ())
+    usage ();
+
   if (args[0][0] == '-') {
     switch (args[0][1]) {
+    case 'h':
+    case '?':
+      usage ();
+      break;
     case 'l':
       op_l (args);
       break;

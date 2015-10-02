@@ -332,7 +332,8 @@ void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
   // Adjust for the global haptic volume.
   duty = (duty*state->haptic_volume + 50)/100;
 
-  Omniwear::configure_motor (state->device_impl->device.get (), motor, duty);
+  if (state->device_impl && state->device_impl->device)
+    Omniwear::configure_motor (state->device_impl->device.get (), motor, duty);
 }
 
 void reset_omniwear_device(haptic_device_state_t *state)
@@ -348,7 +349,8 @@ void reset_omniwear_device(haptic_device_state_t *state)
   state->global_intensity_ceiling = 0;
   state->haptic_target_list_len = 0;
 
-  Omniwear::reset_motors (state->device_impl->device.get ());
+  if (state->device_impl && state->device_impl->device)
+    Omniwear::reset_motors (state->device_impl->device.get ());
 
   // Turn off motors.
   for (auto i = 0; i < C_MOTORS; ++i)
