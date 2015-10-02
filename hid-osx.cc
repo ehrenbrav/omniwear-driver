@@ -49,6 +49,9 @@
 #include <sstream>
 #include <functional>
 
+#define DBG(a ...) \
+//  printf(a)
+
 namespace OSXHID {
 
   template<typename T_, CFNumberType type>
@@ -172,7 +175,9 @@ namespace HID {
 
   void release () {
     if (hid_manager) {
-      IOHIDManagerClose (hid_manager, kIOHIDOptionsTypeNone);
+      IOHIDManagerUnscheduleFromRunLoop (hid_manager, CFRunLoopGetCurrent (),
+                                         kCFRunLoopDefaultMode);
+//      IOHIDManagerClose (hid_manager, kIOHIDOptionsTypeNone);
       CFRelease (hid_manager);
       hid_manager = nullptr; } }
 
@@ -184,6 +189,7 @@ namespace HID {
                  // *** application handle it?
 
     IOHIDManagerSetDeviceMatching (hid_manager, NULL);
+    IOHIDManagerOpen (hid_manager, kIOHIDOptionsTypeNone);
     CFSetRef device_set = IOHIDManagerCopyDevices (hid_manager);
 
     auto num_devices = CFSetGetCount (device_set);
@@ -210,6 +216,7 @@ namespace HID {
     }
 
     CFRelease (device_set);
+    IOHIDManagerClose (hid_manager, kIOHIDOptionsTypeNone);
   }
 
   HID::DevicesP enumerate (uint16_t vid, uint16_t pid) {
@@ -236,19 +243,26 @@ namespace HID {
   }
 
   DeviceP open (uint16_t vid, uint16_t pid, const std::string& serial) {
-    if (!init ())
+    DBG ("== %s\n", __FUNCTION__);
+    if (!init ()) {
+      DBG ("  *** failed to init\n");
       return nullptr;
+    }
 
     DeviceP device = nullptr;
 
     enumerate ([&] (IOHIDDeviceRef os_dev, const DeviceInfo& device_info) {
+        DBG ("opening %x %x\n", device_info.vid_, device_info.pid_);
         if (true
             && (!vid || vid == device_info.vid_)
             && (!pid || pid == device_info.pid_)
             && (  !serial.length ()
-                || serial.compare (device_info.serial_) == 0)
-            && (IOHIDDeviceOpen (os_dev, kIOHIDOptionsTypeSeizeDevice)
-                == kIOReturnSuccess)) {
+                || serial.compare (device_info.serial_) == 0)) {
+          auto result = IOHIDDeviceOpen (os_dev, kIOHIDOptionsTypeSeizeDevice);
+          if (result != kIOReturnSuccess) {
+            DBG ("unable to open device, %x\n", result);
+            return true;
+          }
           CFRetain (os_dev);
           device = std::make_unique<HID::Device> ();
           device->impl_->os_dev_ = os_dev;

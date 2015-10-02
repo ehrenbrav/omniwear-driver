@@ -20,6 +20,9 @@
 #define vector_length(a) (sqrt((double)dot_product(a, a)))
 #define normalize_vec3(v) {float length = (float) sqrt(dot_product((v),(v)));if (length) length = 1.0f / length;(v)[0] *= length;(v)[1] *= length;(v)[2] *= length;}
 
+#define DBG(a ...) \
+  printf(a)
+
 typedef struct matrix4x4_s {
 
   float m[4][4];
@@ -267,12 +270,15 @@ static int cmp_range(const void *t1, const void *t2) {
 }
 
 void open_omniwear_device(haptic_device_state_t *state) {
-
   // Error check.
   if (!state) {
     printf("ERROR in open_omniwear_device: null pointer for state.\n");
     return;
   }
+
+  DBG ("==%s: impl %p\n", __FUNCTION__,
+       state->device_impl && state->device_impl->device
+       ? state->device_impl->device.get () : nullptr);
 
   // If no device is configured, try to open.
   if (!state->device_impl) {
@@ -282,7 +288,11 @@ void open_omniwear_device(haptic_device_state_t *state) {
 
     impl.device = Omniwear::open ();
 
-    if (impl.device) {
+    DBG ("==%s: opened &impl %p  impl %p\n", __FUNCTION__,
+            state->device_impl,
+            state->device_impl && state->device_impl->device
+            ? state->device_impl->device.get () : nullptr);
+    if (!impl.device) {
       printf("ERROR in open_omniwear_device: could not open haptic device.\n");
       state->device_impl = nullptr;
       return;
@@ -297,6 +307,9 @@ void open_omniwear_device(haptic_device_state_t *state) {
 }
 
 void close_omniwear_device(haptic_device_state_t *state) {
+  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
+       state, state && state->device_impl && state->device_impl->device
+       ? state->device_impl->device.get () : nullptr);
 
   // Error check.
   if (!state) {
@@ -311,6 +324,10 @@ void close_omniwear_device(haptic_device_state_t *state) {
 
 void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 {
+  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
+       state, state && state->device_impl && state->device_impl->device
+       ? state->device_impl->device.get () : nullptr);
+
   if (!state) {
     printf ("***ERR: invalid state\n");
     return;
@@ -338,6 +355,9 @@ void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 
 void reset_omniwear_device(haptic_device_state_t *state)
 {
+//  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
+//       state, state && state->device_impl && state->device_impl->device
+//       ? state->device_impl->device.get () : nullptr);
 
   if (!state) {
     printf ("***ERR: invalid state\n");
@@ -358,6 +378,7 @@ void reset_omniwear_device(haptic_device_state_t *state)
 }
 
 void do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling, float throb_period_sec, double game_time) {
+  DBG ("=== %s\n", __FUNCTION__);
 
   // Error check
   if (intensity_ceiling > 100) {
@@ -411,6 +432,7 @@ void do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling, floa
 }
 
 void stop_throbbing(haptic_device_state_t *state) {
+  DBG ("=== %s\n", __FUNCTION__);
 
   // Error check.
   if (!state) {
@@ -424,6 +446,7 @@ void stop_throbbing(haptic_device_state_t *state) {
 }
 
 void update_haptic_radar(haptic_device_state_t *state, haptic_target_t updated_targets[], int updated_targets_len, vec3_t player_origin, vec3_t player_viewangles_deg) {
+  DBG ("=== %s\n", __FUNCTION__);
 
   // Error check.
   if (!state) {
@@ -548,6 +571,7 @@ void update_haptic_radar(haptic_device_state_t *state, haptic_target_t updated_t
 }
 
 void stop_haptic_radar(haptic_device_state_t *state) {
+  DBG ("=== %s\n", __FUNCTION__);
 
   // Error check.
   if (!state) {
@@ -561,6 +585,7 @@ void stop_haptic_radar(haptic_device_state_t *state) {
 }
 
 void set_haptic_effect(haptic_device_state_t *state, int target_type, haptic_effect_t haptic_effect, float period) {
+  DBG ("=== %s %d %d %g\n", __FUNCTION__, target_type, haptic_effect, period);
 
   // Sanity check.
   if (!state) {
@@ -606,8 +631,10 @@ void set_haptic_effect(haptic_device_state_t *state, int target_type, haptic_eff
 
 // Remove a haptic effect map.
 void clear_haptic_effect(haptic_device_state_t *state, int target_type) {
-
   int i, j;
+
+  DBG ("=== %s\n", __FUNCTION__);
+
   // Locate this haptic effect map.
   for (j = 0; j<state->haptic_effect_maps_len; j++) {
 
@@ -636,6 +663,7 @@ void clear_haptic_effect(haptic_device_state_t *state, int target_type) {
 }
 
 void execute_haptic_effects(haptic_device_state_t *state, double game_time) {
+  DBG ("=== %s\n", __FUNCTION__);
 
   // Update our clock.
   state->last_update = game_time;

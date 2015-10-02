@@ -116,6 +116,10 @@ $O:
 	@echo "MKDIR  " $@
 	$Qmkdir -p $O
 
+.PHONY: lib
+lib: $O$(dll_TARGET)
+	[ ! -d ~/lib ] || cp $O$(dll_TARGET) ~/lib
+
 .PHONY: clean
 clean:
 	@echo "CLEAN  "

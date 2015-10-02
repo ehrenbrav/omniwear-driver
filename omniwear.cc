@@ -17,6 +17,9 @@
 #include "omniwear.h"
 #include <array>
 
+#define DBG(a ...) \
+//  printf(a)
+
 namespace {
   void send_preamble (Omniwear::Device* d) {
     // Poll for version
@@ -42,6 +45,7 @@ namespace Omniwear {
     auto d = HID::open (0x3eb, 0x2402);
     if (d)
       send_preamble (d.get ());
+    DBG ("Omniwear::open %p\n", d ? d.get () : nullptr);
     return std::move (d); }
 
   bool reset_motors (Device* d) {
@@ -49,6 +53,7 @@ namespace Omniwear {
     return HID::write (d, &msg[0], msg.size ()) == msg.size (); }
 
   bool configure_motor (HID::Device* d, int motor, int duty) {
+    DBG ("config %d %d\n", motor, duty);
     std::array<char,8> msg = { 0x4, 0x10,
                                char (motor), char (duty*255/100), char (0xff) };
     return HID::write (d, &msg[0], msg.size ()) == msg.size (); }
