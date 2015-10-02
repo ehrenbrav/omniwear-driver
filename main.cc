@@ -23,20 +23,25 @@
 #include <array>
 #include <unistd.h>
 
-void service () {
-  int c = 1000;
-  while (c-- && HID::service ())
-    ;
+namespace {
+
+  void service () {
+    int c = 1000;
+    while (c-- && HID::service ())
+      ;
+  }
+
+  enum {
+    op_null  = 0,
+    op_reset,
+    op_list,
+    op_demo_0,
+  };
+
+  using ArgList = std::vector<std::string>;
+
+  bool option_talk;
 }
-
-enum {
-  op_null  = 0,
-  op_reset,
-  op_list,
-  op_demo_0,
-};
-
-using ArgList = std::vector<std::string>;
 
 void usage () {
 
@@ -44,6 +49,7 @@ void usage () {
           "usage: omni [OPTIONS]\n"
           "\n"
           "  MOTOR DUTY      - Set DUTY (0-100) for MOTOR (0-13)\n"
+          "  -t              - Enable talking.  Must preceed other switches\n"
           "  -r              - Reset all motors\n"
           "  -l              - List USB devices\n"
           "  -v              - Show program version\n"
@@ -56,7 +62,7 @@ void usage () {
 }
 
 Omniwear::DeviceP open_cap () {
-  auto d = Omniwear::open ();
+  auto d = Omniwear::open (option_talk);
 
   if (!d) {
     printf ("unable to find omniwear device\n");
@@ -147,11 +153,17 @@ int main (int argc, const char** argv)
   if (!args.size ())
     usage ();
 
+ top:
   if (args[0][0] == '-') {
     switch (args[0][1]) {
     case 'h':
     case '?':
       usage ();
+      break;
+    case 't':
+      option_talk = true;
+      args.erase (args.begin ());
+      goto top;
       break;
     case 'l':
       op_l (args);

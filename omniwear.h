@@ -27,7 +27,7 @@ namespace Omniwear {
   using DeviceP = HID::DeviceP;
   using Device = HID::Device;
 
-  DeviceP open ();
+  DeviceP open (bool option_talk = false);
 
   bool reset_motors (Device*);
   bool configure_motor (Device*, int motor, int duty);

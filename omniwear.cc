@@ -21,18 +21,19 @@
 //  printf(a)
 
 namespace {
-  void send_preamble (Omniwear::Device* d) {
+  void send_preamble (Omniwear::Device* d, bool option_talk) {
+    // Send our version
+    {
+      char option = option_talk ? 1 : 0;
+      std::array<char,8> data = { 0x03, 0x02, 0x01, option };
+      auto result = HID::write (d, &data[0], data.size ());
+      //printf ("write %d\n", result);
+    }
     // Poll for version
     {
       std::string s = "\x02\x01\x02     ";
       auto result = HID::write (d, s.c_str (), s.length ());
       //    printf ("write %d\n", result);
-    }
-    // Send our version
-    {
-      std::string s = "\x02\x02\x01     ";
-      auto result = HID::write (d, s.c_str (), s.length ());
-      //printf ("write %d\n", result);
     }
   }
 
@@ -41,10 +42,10 @@ namespace {
 
 namespace Omniwear {
 
-  DeviceP open () {
+  DeviceP open (bool option_talk) {
     auto d = HID::open (0x3eb, 0x2402);
     if (d)
-      send_preamble (d.get ());
+      send_preamble (d.get (), option_talk);
     DBG ("Omniwear::open %p\n", d ? d.get () : nullptr);
     return std::move (d); }
 
