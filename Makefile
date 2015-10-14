@@ -37,6 +37,7 @@ COMPILER_PREFIX=i686-w64-mingw32-
 SO=.dll
 CFLAGS+=-DOMNIWEAR_BUILD
 ALL+=$O$(basename $(dll_TARGET)).lib
+EXE=.exe
 endif
 
 ifeq ("$(OS)","linux")
@@ -116,6 +117,17 @@ endif
 
 .PHONY: all
 all: $O$(hid_TARGET) $O$(dll_TARGET) $O$(sdk_TARGET) $(ALL)
+
+$Oomniwear_sdk.zip: $O$(dll_TARGET) $O$(basename $(dll_TARGET)).lib $O$(basename $(dll_TARGET)).a
+	mkdir -p $Oomniwear_sdk
+	cp omniwear_SDK.h $O$(dll_TARGET) \
+	  $O$(basename $(dll_TARGET)).lib \
+	  $O$(basename $(dll_TARGET)).a \
+	  $Oomniwear_sdk
+	cd $O ; zip -r omniwear_sdk.zip omniwear_sdk/
+
+.PHONY: archive
+archive: $Oomniwear_sdk.zip
 
 $O$(sdk_TARGET): $O$(dll_TARGET)
 
