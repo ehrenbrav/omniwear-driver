@@ -42,15 +42,6 @@ extern "C" {
 #include <dbt.h>
 }
 
-#if 0
-extern "C" {
- BOOL WINAPI HidD_SetOutputReport(HANDLE, PVOID, ULONG);
- BOOL WINAPI HidD_SetFeature (HANDLE, PVOID, ULONG);
- BOOL WINAPI HidD_GetInputReport(HANDLE, PVOID, ULONG);
- BOOL WINAPI HidD_GetFeature (HANDLE, PVOID, ULONG);
-}
-#endif
-
 namespace HID {
   struct Device::Impl {
     HANDLE h_ = INVALID_HANDLE_VALUE;

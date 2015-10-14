@@ -159,6 +159,9 @@ static void initialize_haptic_motors(haptic_device_state_t *state) {
   // Set global intensity to 0.
   state->current_global_intensity = 0;
   state->global_intensity_ceiling = 0;
+
+  // Default to full-on
+  state->haptic_volume = 100;
 }
 
 static void calculate_range_and_bearing(haptic_device_state_t *state) {

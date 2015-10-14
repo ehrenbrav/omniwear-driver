@@ -1,7 +1,18 @@
 #ifndef HAPTIC_DRIVER_H
 #define HAPTIC_DRIVER_H
 
+
+#if defined (_WIN32) || defined (__CYGWIN__)
+#include "stdbool.h"
+#if defined (OMNIWEAR_BUILD)
+#define DLL_EXPORT __declspec(dllexport) __stdcall
+#else
+#define DLL_EXPORT __declspec(dllimport) __stdcall
+#endif
+#else
 #include <stdbool.h>
+#define DLL_EXPORT
+#endif
 
 /////////////////////////////////
 // USER-CONFIGURABLE SETTINGS
@@ -150,42 +161,42 @@ extern "C" {
 #endif // __cplusplus
 
 // Set a given motor to a given intensity (0-100).
-void command_haptic_motor(haptic_device_state_t *state, int motor_number, int intensity);
+void DLL_EXPORT command_haptic_motor(haptic_device_state_t *state, int motor_number, int intensity);
 
 // Must be called before the device can be used.
-void open_omniwear_device(haptic_device_state_t *state);
+void DLL_EXPORT open_omniwear_device(haptic_device_state_t *state);
 
 // Called at shutdown.
-void close_omniwear_device(haptic_device_state_t *state);
+void DLL_EXPORT close_omniwear_device(haptic_device_state_t *state);
 
 // Turn off all actuators and reset everything.
-void reset_omniwear_device(haptic_device_state_t *state);
+void DLL_EXPORT reset_omniwear_device(haptic_device_state_t *state);
 
 // Throb the entire cap.
 // Intensity and increment are 0-100.
-void do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling, float throb_period_sec, double game_time);
+void DLL_EXPORT do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling, float throb_period_sec, double game_time);
 
 // Should be called after you're done throbbing. Otherwise, the actuators
 // will be stuck in the last throb state.
-void stop_throbbing(haptic_device_state_t *state);
+void DLL_EXPORT stop_throbbing(haptic_device_state_t *state);
 
 // Update the list of targets we're tracking for the haptic radar.
-void update_haptic_radar(haptic_device_state_t *state, haptic_target_t updated_targets[], int updated_targets_len, vec3_t player_origin, vec3_t player_viewangles);
+void DLL_EXPORT update_haptic_radar(haptic_device_state_t *state, haptic_target_t updated_targets[], int updated_targets_len, vec3_t player_origin, vec3_t player_viewangles);
 
 // Turn off haptic radar.
-void stop_haptic_radar(haptic_device_state_t *state);
+void DLL_EXPORT stop_haptic_radar(haptic_device_state_t *state);
 
 // Set haptic radar effect. This configures a type of haptic effect
 // to be associated with a specified target type.
 // period is only read if haptic_effect is a periodic one (ie - PULSE_BY_RANGE)
 // TODO - implement priority ranking of types of target?
-void set_haptic_effect(haptic_device_state_t *state, int target_type, haptic_effect_t haptic_effect, float period);
+void DLL_EXPORT set_haptic_effect(haptic_device_state_t *state, int target_type, haptic_effect_t haptic_effect, float period);
 
 // Removes a haptic effect.
-void clear_haptic_effect(haptic_device_state_t *state, int target_type);
+void DLL_EXPORT clear_haptic_effect(haptic_device_state_t *state, int target_type);
 
 // Called each frame to actually implment the haptic effects.
-void execute_haptic_effects(haptic_device_state_t *state, double game_time);
+void DLL_EXPORT execute_haptic_effects(haptic_device_state_t *state, double game_time);
 
 #ifdef __cplusplus
 }

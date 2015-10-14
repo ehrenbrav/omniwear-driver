@@ -7,6 +7,7 @@ O=o/
 
 OS=$(shell uname -s)
 hid_TARGET=omni$(EXE)
+sdk_TARGET=omni-sdk$(EXE)
 dll_TARGET=libomniwear_sdk$(SO)
 
 ifeq ("$(OS)","Darwin")
@@ -31,8 +32,11 @@ endif
 
 ifeq ("$(OS)","win")
 CONFIG_WINDOWS=y
-COMPILER_PREFIX=x86_64-w64-mingw32-
+#COMPILER_PREFIX=x86_64-w64-mingw32-
+COMPILER_PREFIX=i686-w64-mingw32-
 SO=.dll
+CFLAGS+=-DOMNIWEAR_BUILD
+ALL+=$O$(basename $(dll_TARGET)).lib
 endif
 
 ifeq ("$(OS)","linux")
@@ -43,7 +47,7 @@ OBJS=$(patsubst %.c,$O%.o, \
      $(patsubst %.cc,$O%.o, \
      $($1_SRCS)))
 
-# --- HID test program
+# --- HID test program, statically linked to HID code
 
 hid_SRCS=main.cc omniwear.cc
 
@@ -59,6 +63,21 @@ hid_LIBS+=$(hid_LIBS-y)
 
 hid_OBJS:=$(call OBJS,hid)
 
+# --- HID test program, dynamic linked to HID code
+
+sdk_SRCS=main-sdk.cc
+
+sdk_LIBS+=-lomniwear_sdk -L$O
+
+sdk_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation
+
+sdk_LIBS-$(CONFIG_WINDOWS)= \
+	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+
+sdk_SRCS+=$(sdk_SRCS-y)
+sdk_LIBS+=$(sdk_LIBS-y)
+
+sdk_OBJS:=$(call OBJS,sdk)
 
 # --- SDK library
 
@@ -70,8 +89,8 @@ dll_CFLAGS-$(CONFIG_OSX):=-shared -dynamiclib -Wl,-undefined,dynamic_lookup
 
 dll_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 dll_LIBS-$(CONFIG_WINDOWS)= \
-	-lhid -lsetupapi -static-libgcc
-dll_CFLAGS-$(CONFIG_WINDOWS):=-shared -Wl,-soname,$(dll_TARGET)
+	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+dll_CFLAGS-$(CONFIG_WINDOWS):=-shared -Wl,-soname,$(dll_TARGET) -Wl,--output-def,$O$(basename $(dll_TARGET)).def
 
 dll_SRCS+=$(dll_SRCS-y)
 dll_LIBS+=$(dll_LIBS-y)
@@ -80,8 +99,8 @@ dll_OBJS:=$(call OBJS,dll)
 dll_CFLAGS+=$(dll_CFLAGS-y)
 
 
-
 CXX=$(COMPILER_PREFIX)g++
+DLLTOOL=$(COMPILER_PREFIX)dlltool
 
 ifeq ("$(V)","1")
 Q=
@@ -96,17 +115,28 @@ unsupported:
 endif
 
 .PHONY: all
-all: $O$(hid_TARGET) $O$(dll_TARGET)
+all: $O$(hid_TARGET) $O$(dll_TARGET) $O$(sdk_TARGET) $(ALL)
+
+$O$(sdk_TARGET): $O$(dll_TARGET)
 
 $O$(hid_TARGET): $(hid_OBJS)
 	@echo "LINK   " $@
 	$Q$(CXX) $(CFLAGS) $(hid_CFLAGS) -o $@ $(hid_OBJS) $(hid_LIBS)
 
+$O$(sdk_TARGET): $(sdk_OBJS)
+	@echo "LINK   " $@
+	$Q$(CXX) $(CFLAGS) $(sdk_CFLAGS) -o $@ $(sdk_OBJS) $(sdk_LIBS)
+
 $O$(dll_TARGET): $(dll_OBJS)
 	@echo "LINK   " $@
 	$Q$(CXX) $(CFLAGS) $(dll_CFLAGS) -o $@ $(dll_OBJS) $(dll_LIBS)
 
-$(hid_OBJS) $(dll_OBJS): $O
+$O$(basename $(dll_TARGET)).lib: $O$(dll_TARGET)
+	@echo "LIB    " $@
+	$Q$(DLLTOOL) -D $(dll_TARGET) -d $O$(basename $(dll_TARGET)).def -l $@
+	$Qcp $@ $O$(basename $(dll_TARGET)).a
+
+$(hid_OBJS) $(dll_OBJS) $(sdk_OBJS): $O
 
 $O%.o: %.cc
 	@echo "COMPILE" $@
