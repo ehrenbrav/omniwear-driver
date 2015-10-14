@@ -87,3 +87,15 @@ o Update the resources so that we can see the haptics settings
   $ git fetch haptics haptics
   $ git checkout haptics
 
+
+== Building Xonotic on Windows ==
+
+This program builds on Windows with a few modifications.
+
+o Install Cygwin.  You'll need the compiler, make, autotools, libtool,
+  gmp, sdl jpeg,
+
+o The makefiles do not define WIN32 with the cygwin compiler.  You may
+  need to edit vid_null.c to disable the signal capture.
+
+o Put the library into 
