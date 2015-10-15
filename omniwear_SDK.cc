@@ -9,6 +9,18 @@
 
 #include "omniwear.h"           // HID interface to omniwear device
 
+#if defined (_WIN32)
+// This doesn't quite work.
+extern "C" {
+uint32_t
+__declspec (dllimport)
+__cdecl
+DbgPrint(
+   const char* Format,
+   ...);
+}
+#endif
+
 // Some convenience definitions.
 #define PITCH 0
 #define YAW 1
@@ -22,6 +34,7 @@
 
 #define DBG(a ...) \
 //  printf(a)
+//  DbgPrint (a)
 
 typedef struct matrix4x4_s {
 
@@ -327,9 +340,10 @@ void close_omniwear_device(haptic_device_state_t *state) {
 
 void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 {
-//  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
-//       state, state && state->device_impl && state->device_impl->device
-//       ? state->device_impl->device.get () : nullptr);
+  DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
+       state, state && state->device_impl
+       && state->device_impl->device
+       ? state->device_impl->device.get () : nullptr);
 
   if (!state) {
     printf ("***ERR: invalid state\n");
@@ -584,7 +598,8 @@ void stop_haptic_radar(haptic_device_state_t *state) {
 }
 
 void set_haptic_effect(haptic_device_state_t *state, int target_type, haptic_effect_t haptic_effect, float period) {
-  DBG ("=== %s %d %d %g\n", __FUNCTION__, target_type, haptic_effect, period);
+  DBG ("=== %s %d %d %g\n", __FUNCTION__, target_type,
+       haptic_effect, period);
 
   // Sanity check.
   if (!state) {

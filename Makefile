@@ -57,7 +57,7 @@ hid_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation
 
 hid_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 hid_LIBS-$(CONFIG_WINDOWS)= \
-	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+	-lhid -lntoskrnl -lsetupapi -static -static-libgcc -static-libstdc++
 
 hid_SRCS+=$(hid_SRCS-y)
 hid_LIBS+=$(hid_LIBS-y)
