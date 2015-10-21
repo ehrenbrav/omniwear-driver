@@ -26,7 +26,7 @@ CFLAGS+=-std=c++14 -O3 # -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y
-SO=.so
+SO=.dylib
 CFLAGS+=-fPIC
 endif
 
@@ -53,7 +53,7 @@ OBJS=$(patsubst %.c,$O%.o, \
 hid_SRCS=main.cc omniwear.cc
 
 hid_SRCS-$(CONFIG_OSX)=hid-osx.cc
-hid_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
+hid_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation
 
 hid_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 hid_LIBS-$(CONFIG_WINDOWS)= \
@@ -85,7 +85,7 @@ sdk_OBJS:=$(call OBJS,sdk)
 dll_SRCS=omniwear_SDK.cc omniwear.cc
 
 dll_SRCS-$(CONFIG_OSX)=hid-osx.cc
-dll_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation 
+dll_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation
 dll_CFLAGS-$(CONFIG_OSX):=-shared -dynamiclib -Wl,-undefined,dynamic_lookup
 
 dll_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
@@ -99,6 +99,21 @@ dll_LIBS+=$(dll_LIBS-y)
 dll_OBJS:=$(call OBJS,dll)
 dll_CFLAGS+=$(dll_CFLAGS-y)
 
+# --- SDK Archive
+
+zip_SRCS+=omniwear_SDK.h $O$(dll_TARGET) $O$(sdk_TARGET) $O$(hid_TARGET)
+
+zip_SRCS-$(CONFIG_OSX)+=
+
+zip_SRCS-$(CONFIG_WINDOW)+=$O$(basename $(dll_TARGET)).lib \
+	$O$(basename $(dll_TARGET)).a
+
+zip_SRCS+=$(sdk_SRCS-y)
+zip_DIR=$Oomniwear_sdk-$(OS)
+zip_OUT=$Oomniwear_sdk-$(OS).zip
+
+
+# ---
 
 CXX=$(COMPILER_PREFIX)g++
 DLLTOOL=$(COMPILER_PREFIX)dlltool
@@ -118,16 +133,13 @@ endif
 .PHONY: all
 all: $O$(hid_TARGET) $O$(dll_TARGET) $O$(sdk_TARGET) $(ALL)
 
-$Oomniwear_sdk.zip: $O$(dll_TARGET) $O$(basename $(dll_TARGET)).lib $O$(basename $(dll_TARGET)).a
-	mkdir -p $Oomniwear_sdk
-	cp omniwear_SDK.h $O$(dll_TARGET) \
-	  $O$(basename $(dll_TARGET)).lib \
-	  $O$(basename $(dll_TARGET)).a \
-	  $Oomniwear_sdk
-	cd $O ; zip -r omniwear_sdk.zip omniwear_sdk/
+$(zip_OUT): $(zip_SRCS)
+	mkdir -p $(zip_DIR)
+	cp $(zip_SRCS) $(zip_DIR)
+	cd $O ; zip -r $(notdir $@) $(notdir $(zip_DIR))
 
 .PHONY: archive
-archive: $Oomniwear_sdk.zip
+archive: $(zip_OUT)
 
 $O$(sdk_TARGET): $O$(dll_TARGET)
 
@@ -174,4 +186,3 @@ endif
 what:
 	@echo srcs $(hid_SRCS)
 	@echo objs $(hid_OBJS)
-
