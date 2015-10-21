@@ -18,6 +18,7 @@
 #include <array>
 #include <unistd.h>
 #include <vector>
+#include <string>
 
 namespace {
 
@@ -61,7 +62,7 @@ void open_cap () {
 void send_reset_motors () {
   reset_omniwear_device (&cap$); }
 
-int send_config_motor (int motor, int duty) {
+void send_config_motor (int motor, int duty) {
   command_haptic_motor (&cap$, motor, duty); }
 
 void op_v (ArgList& args) {
