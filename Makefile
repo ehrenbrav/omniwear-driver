@@ -75,8 +75,11 @@ sdk_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation
 sdk_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
 
+sdk_DEPS-$(CONFIG_WINDOWS)+=$O$(basename $(dll_TARGET)).lib
+
 sdk_SRCS+=$(sdk_SRCS-y)
 sdk_LIBS+=$(sdk_LIBS-y)
+sdk_DEPS+=$(sdk_DEPS-y)
 
 sdk_OBJS:=$(call OBJS,sdk)
 
@@ -105,10 +108,10 @@ zip_SRCS+=omniwear_SDK.h $O$(dll_TARGET) $O$(sdk_TARGET) $O$(hid_TARGET)
 
 zip_SRCS-$(CONFIG_OSX)+=
 
-zip_SRCS-$(CONFIG_WINDOW)+=$O$(basename $(dll_TARGET)).lib \
+zip_SRCS-$(CONFIG_WINDOWS)+=$O$(basename $(dll_TARGET)).lib \
 	$O$(basename $(dll_TARGET)).a
 
-zip_SRCS+=$(sdk_SRCS-y)
+zip_SRCS+=$(zip_SRCS-y)
 zip_DIR=$Oomniwear_sdk-$(OS)
 zip_OUT=$Oomniwear_sdk-$(OS).zip
 
@@ -141,7 +144,7 @@ $(zip_OUT): $(zip_SRCS)
 .PHONY: archive
 archive: $(zip_OUT)
 
-$O$(sdk_TARGET): $O$(dll_TARGET)
+$O$(sdk_TARGET): $O$(dll_TARGET) $(sdk_DEPS)
 
 $O$(hid_TARGET): $(hid_OBJS)
 	@echo "LINK   " $@
