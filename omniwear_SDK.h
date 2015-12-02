@@ -5,9 +5,9 @@
 #if defined (_WIN32) || defined (__CYGWIN__)
 #include "stdbool.h"
 #if defined (OMNIWEAR_BUILD)
-#define DLL_EXPORT __declspec(dllexport) __stdcall
+#define DLL_EXPORT __declspec(dllexport) __cdecl
 #else
-#define DLL_EXPORT __declspec(dllimport) __stdcall
+#define DLL_EXPORT __declspec(dllimport) __cdecl
 #endif
 #else
 #include <stdbool.h>
@@ -68,6 +68,15 @@
 // Number of motors in the cap.
 #define NUMBER_OF_MOTORS 13
 #define C_MOTORS (NUMBER_OF_MOTORS)
+
+/* Error result codes for SDK methods */
+enum OMNI_RESULT {
+  OMNI_SUCCESS                      = 0,
+  OMNI_ERROR_NULL_STATE             = 1, /* NULL Omniwear SDK struct pointer */
+  OMNI_ERROR_OPENING_DEVICE         = 2,
+  OMNI_ERROR_INVALID_MOTOR          = 3,
+  OMNI_ERROR_INTENSITY_OUT_OF_RANGE = 4,
+};
 
 // Some convenience definitions.
 typedef float vec3_t[3];
@@ -152,6 +161,11 @@ typedef struct haptic_device_state_s {
 
 } haptic_device_state_t;
 
+typedef struct {
+  int motor;			// Motor index 0..(C_MOTORS - 1)
+  int intensity;                // Intensity 0..100
+} haptic_motor_config_t;
+
 /////////////////////////////////
 // FUNCTION PROTOTYPES
 /////////////////////////////////
@@ -161,20 +175,28 @@ extern "C" {
 #endif // __cplusplus
 
 // Set a given motor to a given intensity (0-100).
-void DLL_EXPORT command_haptic_motor(haptic_device_state_t *state, int motor_number, int intensity);
+OMNI_RESULT DLL_EXPORT command_haptic_motor (haptic_device_state_t *state,
+                                             int motor_number, int intensity);
+
+// Set intensity for a set of motors
+OMNI_RESULT DLL_EXPORT command_haptic_motors (haptic_device_state_t *state,
+                                              haptic_motor_config_t* configs,
+                                              int config_count);
 
 // Must be called before the device can be used.
-void DLL_EXPORT open_omniwear_device(haptic_device_state_t *state);
+OMNI_RESULT DLL_EXPORT open_omniwear_device(haptic_device_state_t *state);
 
 // Called at shutdown.
-void DLL_EXPORT close_omniwear_device(haptic_device_state_t *state);
+OMNI_RESULT DLL_EXPORT close_omniwear_device(haptic_device_state_t *state);
 
 // Turn off all actuators and reset everything.
-void DLL_EXPORT reset_omniwear_device(haptic_device_state_t *state);
+OMNI_RESULT DLL_EXPORT reset_omniwear_device(haptic_device_state_t *state);
 
 // Throb the entire cap.
 // Intensity and increment are 0-100.
-void DLL_EXPORT do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling, float throb_period_sec, double game_time);
+void DLL_EXPORT do_throb(haptic_device_state_t *state,
+                         unsigned int intensity_ceiling,
+                         float throb_period_sec, double game_time);
 
 // Should be called after you're done throbbing. Otherwise, the actuators
 // will be stuck in the last throb state.

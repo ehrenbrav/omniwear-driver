@@ -22,6 +22,10 @@ ifeq ("$(OS)","Windows")
   override OS=win
 endif
 
+ifeq ("$(OS)","CYGWIN_NT-6.1-WOW")
+  override OS=win
+endif
+
 CFLAGS+=-std=c++14 -O3 # -g
 
 ifeq ("$(OS)","osx")
@@ -32,8 +36,8 @@ endif
 
 ifeq ("$(OS)","win")
 CONFIG_WINDOWS=y
-#COMPILER_PREFIX=x86_64-w64-mingw32-
-COMPILER_PREFIX=i686-w64-mingw32-
+COMPILER_PREFIX=x86_64-w64-mingw32-
+#COMPILER_PREFIX=i686-w64-mingw32-
 SO=.dll
 CFLAGS+=-DOMNIWEAR_BUILD
 ALL+=$O$(basename $(dll_TARGET)).lib
@@ -187,5 +191,6 @@ endif
 
 .PHONY: what
 what:
+	@echo os   $(OS)
 	@echo srcs $(hid_SRCS)
 	@echo objs $(hid_OBJS)

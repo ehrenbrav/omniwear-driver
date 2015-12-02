@@ -285,11 +285,11 @@ static int cmp_range(const void *t1, const void *t2) {
   return -1;
 }
 
-void open_omniwear_device(haptic_device_state_t *state) {
+OMNI_RESULT open_omniwear_device(haptic_device_state_t *state) {
   // Error check.
   if (!state) {
     printf("ERROR in open_omniwear_device: null pointer for state.\n");
-    return;
+    return OMNI_ERROR_NULL_STATE;
   }
 
   DBG ("==%s: impl %p\n", __FUNCTION__,
@@ -311,7 +311,7 @@ void open_omniwear_device(haptic_device_state_t *state) {
     if (!impl.device) {
       printf("ERROR in open_omniwear_device: could not open haptic device.\n");
       state->device_impl = nullptr;
-      return;
+      return OMNI_ERROR_OPENING_DEVICE;
     }
 
     state->last_update = 0;
@@ -320,9 +320,10 @@ void open_omniwear_device(haptic_device_state_t *state) {
     initialize_haptic_motors(state);
     reset_omniwear_device(state);
   }
+  return OMNI_SUCCESS;
 }
 
-void close_omniwear_device(haptic_device_state_t *state) {
+OMNI_RESULT close_omniwear_device (haptic_device_state_t *state) {
   DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
        state, state && state->device_impl && state->device_impl->device
        ? state->device_impl->device.get () : nullptr);
@@ -330,15 +331,18 @@ void close_omniwear_device(haptic_device_state_t *state) {
   // Error check.
   if (!state) {
     printf("ERROR in close_omniwear_device: null pointer for state.\n");
-    return;
+    return OMNI_ERROR_NULL_STATE;
   }
 
   reset_omniwear_device(state);
 
   state->device_impl = nullptr;
+
+  return OMNI_SUCCESS;
 }
 
-void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
+OMNI_RESULT command_haptic_motor (haptic_device_state_t* state,
+                                  int motor, int duty)
 {
   DBG ("==%s: state %p  impl %p\n", __FUNCTION__,
        state, state && state->device_impl
@@ -347,17 +351,17 @@ void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 
   if (!state) {
     printf ("***ERR: invalid state\n");
-    return;
+    return OMNI_ERROR_NULL_STATE;
   }
 
   if (motor < 0 || motor > C_MOTORS) {
     printf ("***ERR: motor number must be from 0 to %d\n", C_MOTORS - 1);
-    return;
+    return OMNI_ERROR_INVALID_MOTOR;
   }
 
   if (duty < 0 || duty > 100) {
     printf ("***ERR: intensity must be from 0 to 100%%\n");
-    return;
+    return OMNI_ERROR_INTENSITY_OUT_OF_RANGE;
   }
 
   if (state->haptic_volume == 0)
@@ -368,13 +372,47 @@ void command_haptic_motor (haptic_device_state_t* state, int motor, int duty)
 
   if (state->device_impl && state->device_impl->device)
     Omniwear::configure_motor (state->device_impl->device.get (), motor, duty);
+
+  return OMNI_SUCCESS;
 }
 
-void reset_omniwear_device(haptic_device_state_t *state)
+
+OMNI_RESULT DLL_EXPORT command_haptic_motor (haptic_device_state_t* state,
+                                             haptic_motor_config_t* configs,
+                                             int config_count) {
+  if (!state) {
+    printf ("***ERR: invalid state\n");
+    return OMNI_ERROR_NULL_STATE;
+  }
+
+  for (int i = 0; i < config_count; ++i) {
+    if (configs[i].motor < 0 || configs[i].motor > C_MOTORS) {
+      printf ("***ERR: motor number must be from 0 to %d\n", C_MOTORS - 1);
+      return OMNI_ERROR_INVALID_MOTOR;
+    }
+
+    if (configs[i].intensity < 0 || configs[i].intensity > 100) {
+      printf ("***ERR: intensity must be from 0 to 100%%\n");
+      return OMNI_ERROR_INTENSITY_OUT_OF_RANGE;
+    }
+  }
+
+  for (int i = 0; i < config_count; ++i) {
+    auto duty = (configs[i].intensity*state->haptic_volume + 50)/100;
+    if (state->device_impl && state->device_impl->device)
+      Omniwear::configure_motor (state->device_impl->device.get (),
+                                 configs[i].motor, duty);
+  }
+
+  return OMNI_SUCCESS;
+}
+
+
+OMNI_RESULT reset_omniwear_device(haptic_device_state_t *state)
 {
   if (!state) {
     printf ("***ERR: invalid state\n");
-    return;
+    return OMNI_ERROR_NULL_STATE;
   }
 
   // Housekeeping.
@@ -388,16 +426,19 @@ void reset_omniwear_device(haptic_device_state_t *state)
   // Turn off motors.
   for (auto i = 0; i < C_MOTORS; ++i)
     state->motors[i].is_running = false;
+
+  return OMNI_SUCCESS;
 }
 
-void do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling, float throb_period_sec, double game_time) {
+void do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling,
+              float throb_period_sec, double game_time) {
   DBG ("=== %s\n", __FUNCTION__);
 
   // Error check
   if (intensity_ceiling > 100) {
 
     printf("ERROR in do_throb: intensity_ceiling is not 0-100.\n");
-    return;
+    return ;
   }
 
   if (throb_period_sec < 0) {
