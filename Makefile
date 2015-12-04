@@ -22,7 +22,7 @@ ifeq ("$(OS)","Windows")
   override OS=win
 endif
 
-ifeq ("$(OS)","CYGWIN_NT-6.1-WOW")
+ifeq ("CYGWIN_NT","$(findstring CYGWIN_NT,$(OS))")
   override OS=win
 endif
 
