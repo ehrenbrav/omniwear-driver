@@ -377,7 +377,7 @@ OMNI_RESULT command_haptic_motor (haptic_device_state_t* state,
 }
 
 
-OMNI_RESULT DLL_EXPORT command_haptic_motor (haptic_device_state_t* state,
+OMNI_RESULT DLL_EXPORT command_haptic_motors (haptic_device_state_t* state,
                                              haptic_motor_config_t* configs,
                                              int config_count) {
   if (!state) {
