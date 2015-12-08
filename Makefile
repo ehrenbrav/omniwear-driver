@@ -46,6 +46,8 @@ endif
 
 ifeq ("$(OS)","linux")
 CONFIG_LINUX=y
+CFLAGS+=-fPIC
+SO=.so
 endif
 
 OBJS=$(patsubst %.c,$O%.o, \
@@ -63,6 +65,9 @@ hid_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 hid_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lntoskrnl -lsetupapi -static -static-libgcc -static-libstdc++
 
+hid_SRCS-$(CONFIG_LINUX)=hid-linux.cc
+hid_LIBS-$(CONFIG_LINUX)=-lusb
+
 hid_SRCS+=$(hid_SRCS-y)
 hid_LIBS+=$(hid_LIBS-y)
 
@@ -78,6 +83,9 @@ sdk_LIBS-$(CONFIG_OSX)=-framework IOKit -framework CoreFoundation
 
 sdk_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
+
+sdk_LIBS-$(CONFIG_LINUX)= \
+	-lusb
 
 sdk_DEPS-$(CONFIG_WINDOWS)+=$O$(basename $(dll_TARGET)).lib
 
@@ -99,6 +107,9 @@ dll_SRCS-$(CONFIG_WINDOWS)=hid-windows.cc
 dll_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
 dll_CFLAGS-$(CONFIG_WINDOWS):=-shared -Wl,-soname,$(dll_TARGET) -Wl,--output-def,$O$(basename $(dll_TARGET)).def
+
+dll_SRCS-$(CONFIG_LINUX)=hid-linux.cc
+dll_CFLAGS-$(CONFIG_LINUX)=-shared
 
 dll_SRCS+=$(dll_SRCS-y)
 dll_LIBS+=$(dll_LIBS-y)
@@ -129,12 +140,6 @@ ifeq ("$(V)","1")
 Q=
 else
 Q=@
-endif
-
-ifeq ("$(OS)","linux")
-.PHONY: unsupported
-unsupported:
-	@echo "=== OS '$(OS)' unsupported"
 endif
 
 .PHONY: all

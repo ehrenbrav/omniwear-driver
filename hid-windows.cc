@@ -245,9 +245,7 @@ namespace {
       return false; }
 
 
-    void enumerate (std::function<bool
-                    (HDEVINFO hDevInfo,
-                     const HID::DeviceInfo& device_info)> f) {
+    void enumerate (std::function<bool (HDEVINFO, const HID::DeviceInfo&)> f) {
       if (!init ())
         return;
 

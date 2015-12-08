@@ -82,7 +82,7 @@ namespace HID {
     DeviceInfo (uint16_t vid, uint16_t pid, std::string path,
                 std::string serial, uint16_t version,
                 std::string manufacturer, std::string product,
-                uint16_t usage_page, uint16_t usage)
+                uint16_t usage_page = 0, uint16_t usage = 0)
     : vid_ (vid), pid_ (pid), path_ (path), serial_ (serial),
       version_ (version), manufacturer_ (manufacturer),
       product_ (product), usage_page_ (usage_page), usage_ (usage) {}
