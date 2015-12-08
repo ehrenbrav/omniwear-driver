@@ -76,6 +76,7 @@ enum OMNI_RESULT {
   OMNI_ERROR_OPENING_DEVICE         = 2,
   OMNI_ERROR_INVALID_MOTOR          = 3,
   OMNI_ERROR_INTENSITY_OUT_OF_RANGE = 4,
+  OMNI_ERROR_INVALID_PACKING	    = 5,
 };
 
 // Some convenience definitions.
@@ -191,6 +192,33 @@ OMNI_RESULT DLL_EXPORT close_omniwear_device(haptic_device_state_t *state);
 
 // Turn off all actuators and reset everything.
 OMNI_RESULT DLL_EXPORT reset_omniwear_device(haptic_device_state_t *state);
+
+// Define arbitrary mapping between packed intensity mappings and
+// motor drive intensities.  Count must be 16.  The duties are motor
+// drive intensities from 0 to 255.  The index of the array is the
+// packed code.
+OMNI_RESULT DLL_EXPORT define_packed_mapping(haptic_device_state_t* state,
+                                             char* duties, int count);
+
+// Define a simple linear mapping between packed intensity mappings
+// and motor drive intensities.  The numerator/denominator is the
+// slope of the interpolation.  The mapping is from packed codes 0-15
+// to intensities from 0-255.  A typical mapping might be (127, 15,
+// 128) to start with code 1 as 136 and code 15 as 255. Code 0 is
+// always 0.
+OMNI_RESULT DLL_EXPORT define_linear_packed_mapping(haptic_device_state_t*
+                                                    state,
+                                                    int numerator,
+                                                    int denominator,
+                                                    int intercept);
+
+// Set motor drive intensities using a packed mapping.  Intensities
+// are defined for all motors from 0 to count.  The intensity values
+// must be between 0 and 100.
+OMNI_RESULT DLL_EXPORT command_haptic_motors_packed(haptic_device_state_t*
+                                                    state,
+                                                    int* intensities,
+                                                    int count);
 
 // Throb the entire cap.
 // Intensity and increment are 0-100.

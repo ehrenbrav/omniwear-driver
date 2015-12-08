@@ -430,6 +430,65 @@ OMNI_RESULT reset_omniwear_device(haptic_device_state_t *state)
   return OMNI_SUCCESS;
 }
 
+// Define arbitrary mapping between packed intensity mappings and
+// motor drive intensities.  Count must be 16.  The duties are motor
+// drive intensities from 0 to 255.  The index of the array is the
+// packed code.
+OMNI_RESULT DLL_EXPORT define_packed_mapping(haptic_device_state_t* state,
+                                             char* duties, int count) {
+  if (!state || !state->device_impl || !state->device_impl->device) {
+    printf ("***ERR: invalid state\n");
+    return OMNI_ERROR_NULL_STATE;
+  }
+
+  if (duties == nullptr || count != 16)
+    return OMNI_ERROR_INVALID_PACKING;
+
+  return Omniwear::define_packed (state->device_impl->device.get (),
+                                  duties, count)
+    ? OMNI_SUCCESS
+    : OMNI_ERROR_INVALID_PACKING;
+}
+
+// Define a simple linear mapping between packed intensity mappings
+// and motor drive intensities.  The numerator/denominator is the
+// slope of the interpolation.  The mapping is from packed codes 0-15
+// to intensities from 0-255.  A typical mapping might be (127, 15,
+// 128) to start with code 1 as 136 and code 15 as 255. Code 0 is
+// always 0.
+OMNI_RESULT DLL_EXPORT define_linear_packed_mapping(haptic_device_state_t*
+                                                    state,
+                                                    int numerator,
+                                                    int denominator,
+                                                    int intercept) {
+  if (!state || !state->device_impl || !state->device_impl->device) {
+    printf ("***ERR: invalid state\n");
+    return OMNI_ERROR_NULL_STATE;
+  }
+
+  return Omniwear::define_packed_linear (state->device_impl->device.get (),
+                                         numerator, denominator, intercept)
+    ? OMNI_SUCCESS
+    : OMNI_ERROR_INVALID_PACKING;
+}
+
+// Set motor drive intensities using a packed mapping.  Intensities
+// are defined for all motors from 0 to count.  The intensity values
+// must be between 0 and 100.
+OMNI_RESULT DLL_EXPORT command_haptic_motors_packed(haptic_device_state_t*
+                                                    state,
+                                                    int* intensities,
+                                                    int count) {
+  if (!state || !state->device_impl || !state->device_impl->device) {
+    printf ("***ERR: invalid state\n");
+    return OMNI_ERROR_NULL_STATE;
+  }
+
+  Omniwear::configure_motors_packed (state->device_impl->device.get (),
+                                     intensities, count);
+  return OMNI_SUCCESS;
+}
+
 void do_throb(haptic_device_state_t *state, unsigned int intensity_ceiling,
               float throb_period_sec, double game_time) {
   DBG ("=== %s\n", __FUNCTION__);
