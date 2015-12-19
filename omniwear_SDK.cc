@@ -378,8 +378,9 @@ OMNI_RESULT command_haptic_motor (haptic_device_state_t* state,
 
 
 OMNI_RESULT DLL_EXPORT command_haptic_motors (haptic_device_state_t* state,
-                                             haptic_motor_config_t* configs,
-                                             int config_count) {
+                                              const haptic_motor_config_t*
+                                              configs,
+                                              int config_count) {
   if (!state) {
     printf ("***ERR: invalid state\n");
     return OMNI_ERROR_NULL_STATE;
@@ -477,7 +478,7 @@ OMNI_RESULT DLL_EXPORT define_linear_packed_mapping(haptic_device_state_t*
 // must be between 0 and 100.
 OMNI_RESULT DLL_EXPORT command_haptic_motors_packed(haptic_device_state_t*
                                                     state,
-                                                    int* intensities,
+                                                    const int* intensities,
                                                     int count) {
   if (!state || !state->device_impl || !state->device_impl->device) {
     printf ("***ERR: invalid state\n");

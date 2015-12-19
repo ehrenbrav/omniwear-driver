@@ -123,7 +123,7 @@ namespace Omniwear {
     return define_packed (d, &packed_mapping[0], packed_mapping.size ());
   }
 
-  bool configure_motors_packed (Device* d, int* intensities, int count)
+  bool configure_motors_packed (Device* d, const int* intensities, int count)
   {
     if (!intensities || count < 0 || count > 14)
       return false;

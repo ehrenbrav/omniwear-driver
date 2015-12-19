@@ -183,8 +183,15 @@ OMNI_RESULT DLL_EXPORT command_haptic_motor (haptic_device_state_t *state,
 
 // Set intensity for a set of motors
 OMNI_RESULT DLL_EXPORT command_haptic_motors (haptic_device_state_t *state,
-                                              haptic_motor_config_t* configs,
+                                              const haptic_motor_config_t*
+                                              configs,
                                               int config_count);
+
+// Set intensity for a set of motors using packed encoding
+OMNI_RESULT DLL_EXPORT command_haptic_motors_packed (haptic_device_state_t*
+                                                     state,
+                                                     const int* intensities,
+                                                     int count);
 
 // Must be called before the device can be used.
 OMNI_RESULT DLL_EXPORT open_omniwear_device(haptic_device_state_t *state);
@@ -213,14 +220,6 @@ OMNI_RESULT DLL_EXPORT define_linear_packed_mapping(haptic_device_state_t*
                                                     int numerator,
                                                     int denominator,
                                                     int intercept);
-
-// Set motor drive intensities using a packed mapping.  Intensities
-// are defined for all motors from 0 to count.  The intensity values
-// must be between 0 and 100.
-OMNI_RESULT DLL_EXPORT command_haptic_motors_packed(haptic_device_state_t*
-                                                    state,
-                                                    int* intensities,
-                                                    int count);
 
 // Throb the entire cap.
 // Intensity and increment are 0-100.

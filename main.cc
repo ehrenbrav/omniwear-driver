@@ -64,7 +64,6 @@ void usage () {
           "     1 T I          Mode 1; run each motor in order for T seconds\n"
           "                            at I intensity with packed conf.\n"
           "  -h|?            - Show usage\n"
-          "
           );
   exit (0);
 }
@@ -93,7 +92,7 @@ int send_config_motors_packed (Omniwear::Device* d, int* duties, int count) {
   return Omniwear::configure_motors_packed (d, duties, count); }
 
 void op_v (ArgList& args) {
-  printf ("omni HID test, version 0.4\n");
+  printf ("omni HID test, version 0.5\n");
   exit (0);
 }
 
@@ -236,10 +235,6 @@ int main (int argc, const char** argv)
       break;
     case 't':
       option_talk = true;
-
-
-
-
       args.erase (args.begin ());
       goto top;
       break;
