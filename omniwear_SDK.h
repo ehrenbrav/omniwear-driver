@@ -14,6 +14,8 @@
 #define DLL_EXPORT
 #endif
 
+#include <stdint.h>
+
 /////////////////////////////////
 // USER-CONFIGURABLE SETTINGS
 /////////////////////////////////
@@ -198,7 +200,7 @@ OMNI_RESULT DLL_EXPORT reset_omniwear_device(haptic_device_state_t *state);
 // drive intensities from 0 to 255.  The index of the array is the
 // packed code.
 OMNI_RESULT DLL_EXPORT define_packed_mapping(haptic_device_state_t* state,
-                                             char* duties, int count);
+                                             const uint8_t* duties, int count);
 
 // Define a simple linear mapping between packed intensity mappings
 // and motor drive intensities.  The numerator/denominator is the

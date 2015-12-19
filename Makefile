@@ -26,7 +26,7 @@ ifeq ("CYGWIN_NT","$(findstring CYGWIN_NT,$(OS))")
   override OS=win
 endif
 
-CFLAGS+=-std=c++14 -O3 # -g
+CFLAGS+=-std=c++14 -O2 -g
 
 ifeq ("$(OS)","osx")
 CONFIG_OSX=y

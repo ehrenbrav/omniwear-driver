@@ -25,6 +25,7 @@
 #include "hid.h"
 #include "omniwear.h"
 #include <array>
+#include <stdlib.h>
 
 #define DBG(a ...) \
 //  printf(a)
@@ -51,11 +52,16 @@ namespace {
 
   int nearest_packed_code (int intensity) {
     int best = 0;
-    int delta = abs (packed_mapping[best] - intensity);
+    uint8_t duty = (intensity*255)/100; // Convert 0-100% to 0-255
+    int delta = abs (packed_mapping[best] - duty);
     for (size_t i = 1; i < packed_mapping.size (); ++i) {
-      int d = abs (packed_mapping[i] - intensity);
-      if (d < delta)
+      int d = abs (packed_mapping[i] - duty);
+//      if (intensity)
+//        printf ("%d %d %zd %d %d %d\n", intensity, duty, i, d, delta, best);
+      if (d < delta) {
         best = i;
+        delta = d;
+      }
     }
     return best;
   }
@@ -79,10 +85,11 @@ namespace Omniwear {
   bool configure_motor (Device* d, int motor, int duty) {
     DBG ("config %d %d\n", motor, duty);
     std::array<char,8> msg = { 0x4, 0x10,
-                               char (motor), char (duty*255/100), char (0xff) };
+                               char (motor), char (duty*255/100),
+                               char (0xff) };
     return HID::write (d, &msg[0], msg.size ()) == msg.size (); }
 
-  bool define_packed (Device* d, char* intensities, int count) {
+  bool define_packed (Device* d, const uint8_t* intensities, int count) {
     if (intensities == nullptr || count != 16)
       return false;
     for (size_t i = 0; i < count; ++i) {
@@ -100,17 +107,20 @@ namespace Omniwear {
       0th entry is always zero. */
   bool define_packed_linear (Device* d, int numerator, int denominator,
                              int intercept) {
-    std::array<char,16> mapping;
     packed_mapping[0] = 0;
     for (size_t i = 1; i < 16; ++i) {
-      auto v = (i*numerator + denominator/2)/denominator + intercept;
+      int v = (i*numerator + denominator/2)/denominator + intercept;
       if (v < 0)
         v = 0;
       if (v > 255)
         v = 255;
       packed_mapping[i] = v;
     }
-    return define_packed (d, &mapping[0], mapping.size ());
+//    printf ("mapping");
+//    for (auto v : packed_mapping)
+//      printf (" %3d", v);
+//    printf ("\n");
+    return define_packed (d, &packed_mapping[0], packed_mapping.size ());
   }
 
   bool configure_motors_packed (Device* d, int* intensities, int count)

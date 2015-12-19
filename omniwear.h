@@ -31,7 +31,7 @@ namespace Omniwear {
 
   bool reset_motors (Device*);
   bool configure_motor (Device*, int motor, int duty);
-  bool define_packed (Device*, char* intensities, int count);
+  bool define_packed (Device*, const uint8_t* intensities, int count);
   bool define_packed_linear (Device*,
                              int numerator, int denominator, int intercept);
   bool configure_motors_packed (Device*, int* duties, int count);

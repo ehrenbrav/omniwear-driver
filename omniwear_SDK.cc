@@ -435,7 +435,7 @@ OMNI_RESULT reset_omniwear_device(haptic_device_state_t *state)
 // drive intensities from 0 to 255.  The index of the array is the
 // packed code.
 OMNI_RESULT DLL_EXPORT define_packed_mapping(haptic_device_state_t* state,
-                                             char* duties, int count) {
+                                             const uint8_t* duties, int count) {
   if (!state || !state->device_impl || !state->device_impl->device) {
     printf ("***ERR: invalid state\n");
     return OMNI_ERROR_NULL_STATE;
