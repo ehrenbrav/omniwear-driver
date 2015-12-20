@@ -66,7 +66,7 @@ hid_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lntoskrnl -lsetupapi -static -static-libgcc -static-libstdc++
 
 hid_SRCS-$(CONFIG_LINUX)=hid-linux.cc
-hid_LIBS-$(CONFIG_LINUX)=-lusb
+hid_LIBS-$(CONFIG_LINUX)=-lusb-1.0
 
 hid_SRCS+=$(hid_SRCS-y)
 hid_LIBS+=$(hid_LIBS-y)
@@ -85,7 +85,7 @@ sdk_LIBS-$(CONFIG_WINDOWS)= \
 	-lhid -lsetupapi -static -static-libgcc -static-libstdc++
 
 sdk_LIBS-$(CONFIG_LINUX)= \
-	-lusb
+	-lusb-1.0
 
 sdk_DEPS-$(CONFIG_WINDOWS)+=$O$(basename $(dll_TARGET)).lib
 

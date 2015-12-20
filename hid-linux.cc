@@ -14,7 +14,7 @@
 */
 
 #include "hid.h"
-#include <usb.h>
+#include <libusb-1.0/libusb.h>
 
 #include <string.h>
 #include <functional>
@@ -23,43 +23,63 @@
 #include <sstream>
 
 
-
 namespace {
   bool failed_;
   bool init_;
 
+  libusb_context* ctx$;
+
   static constexpr auto MS_TIMEOUT = 10000;
 
   namespace USB {
-    using Device = struct usb_device;
-    using Handle = struct usb_dev_handle;
+    using Device = struct libusb_device;
+    using Handle = struct libusb_device_handle;
   }
 
   std::string path (USB::Device* d) {
+    libusb_device_descriptor descriptor;
+    auto result = ::libusb_get_device_descriptor (d, &descriptor);
+    uint8_t bus = ::libusb_get_bus_number (d);
+    uint8_t ports[128];
+    result = ::libusb_get_port_numbers (d, ports, sizeof (ports));
     std::ostringstream o;
     o << std::setbase (16)
-      << std::setfill ('0') << std::setw (4) << d->descriptor.idVendor
+      << std::setfill ('0') << std::setw (4) << descriptor.idVendor
       << ":"
-      << std::setfill ('0') << std::setw (4) << d->descriptor.idProduct
-      << "@" << d->bus->dirname
-      << "/" << d->filename;
-    return o.str (); }
+      << std::setfill ('0') << std::setw (4) << descriptor.idProduct
+      << "/" << int (bus);
+      ;
+
+    if (result > 0) {
+      for (int i = 0; i < result; ++i)
+        o << "/" << int (ports[i]);
+    }
+    return o.str ();
+ }
 
   std::string lookup_string (USB::Handle* h, int index) {
+    if (!h)
+      return "";
+
     auto constexpr C_MAX = 128;
     char sz[C_MAX];
-    auto result = usb_get_string_simple (h, index, sz, sizeof (sz));
+    auto result = libusb_get_string_descriptor_ascii (h, index,
+                                                      (uint8_t*) sz,
+                                                      sizeof (sz));
     return result > 0 ? std::string (sz) : std::string ();
+
   }
 }
 
 
 namespace HID {
   struct Device::Impl {
-    usb_dev_handle* device_handle_ = 0;
+    libusb_device_handle* device_handle_ = 0;
     ~Impl () {
-      if (device_handle_)
-        ::usb_close (device_handle_);
+      if (device_handle_) {
+        ::libusb_release_interface (device_handle_, 0);
+        ::libusb_close (device_handle_);
+      }
     }
   };
 
@@ -71,38 +91,47 @@ namespace HID {
     if (failed_)
       return false;
     if (!init_) {
-      ::usb_init ();
+      auto result = ::libusb_init (&ctx$);
+      failed_ = result < 0;
+//      if (!failed_)
+//        ::libusb_set_debug (ctx$, 3);
       init_ = true;
     }
     return init_;
   }
 
-  void enumerate (std::function<bool (USB::Device*, HID::DeviceInfo&)> f) {
+  void enumerate (std::function<bool (USB::Device*,
+                                      USB::Handle*,
+                                      HID::DeviceInfo&)> f) {
     if (!init ())
       return;
 
-    ::usb_find_busses ();
-    ::usb_find_devices ();
+    libusb_device** devices;
+    auto count = ::libusb_get_device_list (ctx$, &devices);
 
-    for (auto bus = usb_get_busses (); bus; bus = bus->next)
-      for (auto device = bus->devices; device; device = device->next) {
-        auto h = usb_open (device);
-
-        // Build the information structure
-        HID::DeviceInfo device_info {
-          device->descriptor.idVendor,
-            device->descriptor.idProduct,
-            path (device),
-            lookup_string (h, device->descriptor.iSerialNumber),
-            0, // attr.VersionNumber,
-            lookup_string (h, device->descriptor.iManufacturer),
-            lookup_string (h, device->descriptor.iProduct),
-//            caps.UsagePage,
-//            caps.Usage
-            };
-        usb_close (h);
-        f (device, device_info);
-      }
+    for (size_t i = 0; i < count; ++i) {
+      auto device = devices[i];
+      libusb_device_descriptor descriptor;
+      auto result = ::libusb_get_device_descriptor (device, &descriptor);
+      libusb_device_handle* h = nullptr;
+      result = ::libusb_open (device, &h);
+      // Build the information structure
+      HID::DeviceInfo device_info {
+        descriptor.idVendor,
+          descriptor.idProduct,
+          path (device),
+          lookup_string (h, descriptor.iSerialNumber),
+          0, // attr.VersionNumber,
+          lookup_string (h, descriptor.iManufacturer),
+          lookup_string (h, descriptor.iProduct),
+          //            caps.UsagePage,
+          //            caps.Usage
+          };
+      if (h)
+        ::libusb_close (h);
+      f (device, nullptr, device_info);
+    }
+    ::libusb_free_device_list (devices, 1);
   }
 
   HID::DevicesP enumerate (uint16_t vid, uint16_t pid) {
@@ -112,22 +141,26 @@ namespace HID {
     auto devices
       = std::make_unique <std::vector<std::unique_ptr<HID::DeviceInfo>>>();
 
-    enumerate ([&] (USB::Device* usb_device, HID::DeviceInfo& device_info) {
-                   printf (" vid %04x pid %04x\n",
-                           device_info.vid_, device_info.pid_);
-                 if (false
-                     // Discard devices that don't match selection criteria
-                     || (vid && vid != usb_device->descriptor.idVendor)
-                     || (pid && pid != usb_device->descriptor.idProduct)
-                     // Discard devices without VID/PID
-                     || (usb_device->descriptor.idVendor == 0
-                         && usb_device->descriptor.idProduct == 0)
-                     )
-                   return true;
-                 devices->push_back
-                   (std::make_unique<HID::DeviceInfo> (device_info));
-                 return true;
-               });
+    enumerate ([&] (USB::Device* usb_device, USB::Handle* usb_handle,
+                    HID::DeviceInfo& device_info) {
+//        printf (" vid %04x pid %04x\n",
+//                device_info.vid_, device_info.pid_);
+        libusb_device_descriptor descriptor;
+        auto result = ::libusb_get_device_descriptor (usb_device,
+                                                      &descriptor);
+        if (false
+            // Discard devices that don't match selection criteria
+            || (vid && vid != descriptor.idVendor)
+            || (pid && pid != descriptor.idProduct)
+            // Discard devices without VID/PID
+            || (descriptor.idVendor == 0
+                && descriptor.idProduct == 0)
+            )
+          return true;
+        devices->push_back
+          (std::make_unique<HID::DeviceInfo> (device_info));
+        return true;
+      });
 
     return devices;
 
@@ -139,7 +172,7 @@ namespace HID {
 
     HID::DeviceP device = nullptr;
 
-    enumerate ([&] (USB::Device* usb_device,
+    enumerate ([&] (USB::Device* usb_device, USB::Handle* usb_handle,
                     const HID::DeviceInfo& device_info){
                  if (false
                      // Discard devices that don't match selection criteria
@@ -149,10 +182,20 @@ namespace HID {
                      || (device_info.vid_ == 0 && device_info.pid_ == 0)
                      )
                    return true;
-
-                 auto h = usb_open (usb_device);
+                 // *** FIXME: verify that this works.
+                 auto result = ::libusb_open (usb_device, &usb_handle);
+                 if (result < 0 || usb_handle == nullptr)
+                   return false;
+//                 printf ("pid open %d\n", result);
+//                 ::libusb_ref_device (usb_device);
+                 result = ::libusb_detach_kernel_driver (usb_handle, 0);
+//                 printf ("detach %d\n", result);
+                 result = ::libusb_claim_interface (usb_handle, 0);
+                 if (result < 0)
+                   return false;
+//                 printf ("claim %d\n", result);
                  device = std::make_unique<HID::Device> ();
-                 device->impl_->device_handle_ = h;
+                 device->impl_->device_handle_ = usb_handle;
                  return false;
                });
     return device; }
@@ -163,11 +206,24 @@ namespace HID {
 
     DeviceP device = nullptr;
 
-    enumerate ([&] (USB::Device* usb_device, const DeviceInfo& device_info) {
+    enumerate ([&] (USB::Device* usb_device, USB::Handle* usb_handle,
+                    const DeviceInfo& device_info) {
         if (path.compare (device_info.path_) == 0) {
-          auto h = usb_open (usb_device);
-          device = std::make_unique<HID::Device>();
-          device->impl_->device_handle_ = h;
+          // *** FIXME: verify that this works.
+          auto result = ::libusb_open (usb_device, &usb_handle);
+          if (result < 0 || usb_handle == nullptr)
+            return false;
+//          printf ("path open %d\n", result);
+          //                 ::libusb_ref_device (usb_device);
+          result = ::libusb_detach_kernel_driver (usb_handle, 0);
+          result = ::libusb_claim_interface (usb_handle, 0);
+          if (result < 0)
+            return false;
+//          printf ("claim %d\n", result);
+//          ::libusb_ref_device (usb_device);
+//          ::libusb_claim_interface (usb_handle, 0);
+          device = std::make_unique<HID::Device> ();
+          device->impl_->device_handle_ = usb_handle;
           return false;
         }
         return true; });
@@ -179,16 +235,28 @@ namespace HID {
     return write (d, rgb, cb); }
 
   int write (const Device* d, const char* rgbPayload, size_t cbPayload) {
-    char rgb[32];
-    size_t cb = 1 + cbPayload;
-    rgb[0] = 1;
-    if (cbPayload > sizeof (rgb) - 1)
-      cbPayload = sizeof (rgb) - 1;
-    memcpy (rgb + 1, rgbPayload, cbPayload);
-    auto result = usb_control_msg (d->impl_->device_handle_,
-                                   USB_ENDPOINT_OUT | USB_TYPE_CLASS
-                                   | USB_RECIP_INTERFACE,
-                                   0x09, 0, 1, rgb, cb, MS_TIMEOUT);
-    return result; }
+#if 1
+    int cbWritten = 0;
+    auto result = ::libusb_interrupt_transfer (d->impl_->device_handle_,
+                                               2, (uint8_t*) rgbPayload,
+                                               cbPayload,
+                                               &cbWritten, MS_TIMEOUT);
+//    printf ("write %d %d\n", result, cbWritten);
+#else
+    static const int CONTROL_REQUEST_TYPE_OUT
+      = LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS
+      | LIBUSB_RECIPIENT_INTERFACE;
+    static const int HID_SET_REPORT = 9;
+
+    auto result = ::libusb_control_transfer (d->impl_->device_handle_,
+                                             CONTROL_REQUEST_TYPE_OUT,
+                                             HID_SET_REPORT,
+                                             0x00,
+                                             0,
+                                             (uint8_t*) rgb, cb, MS_TIMEOUT);
+    printf ("write %d\n", result);
+#endif
+    return result;
+  }
 
 }
