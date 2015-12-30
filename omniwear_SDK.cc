@@ -335,7 +335,9 @@ OMNI_RESULT close_omniwear_device (haptic_device_state_t *state) {
   }
 
   reset_omniwear_device(state);
-
+  
+  //free the HID resources
+  delete state->device_impl->device.get();
   state->device_impl = nullptr;
 
   return OMNI_SUCCESS;
