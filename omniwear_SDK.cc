@@ -310,6 +310,7 @@ OMNI_RESULT open_omniwear_device(haptic_device_state_t *state) {
             ? state->device_impl->device.get () : nullptr);
     if (!impl.device) {
       printf("ERROR in open_omniwear_device: could not open haptic device.\n");
+      delete state->device_impl;
       state->device_impl = nullptr;
       return OMNI_ERROR_OPENING_DEVICE;
     }
@@ -335,10 +336,12 @@ OMNI_RESULT close_omniwear_device (haptic_device_state_t *state) {
   }
 
   reset_omniwear_device(state);
-  
-  //free the HID resources
-  delete state->device_impl->device.get();
-  state->device_impl = nullptr;
+
+  // Release system device
+  if (state->device_impl) {
+    delete state->device_impl;
+    state->device_impl = nullptr;
+  }
 
   return OMNI_SUCCESS;
 }
