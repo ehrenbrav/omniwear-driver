@@ -841,7 +841,12 @@ void execute_haptic_effects(haptic_device_state_t *state, double game_time) {
 
       // Run motor only if the target is within it's cone.
       if (angle < MAX_ANGLE) {
-              intensity = 100;
+              if (target->range > MAX_RANGE/2) {
+                      intensity = 50;
+              }
+              else {
+                      intensity = 100;
+              }
       }
       else {
               intensity = 0;
