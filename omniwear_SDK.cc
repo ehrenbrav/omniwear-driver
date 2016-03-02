@@ -839,8 +839,14 @@ void execute_haptic_effects(haptic_device_state_t *state, double game_time) {
       // Set the tracking target flag.
       tracking_target = true;
 
-      // Scale this motor's intensity by the target's angle from the normal.
-      intensity = 100 * (1 - (angle/MAX_ANGLE));
+      // Run motor only if the target is within it's cone.
+      if (angle < MAX_ANGLE) {
+              intensity = 100;
+      }
+      else {
+              intensity = 0;
+      }
+      //      intensity = 100 * (1 - (angle/MAX_ANGLE));
 
       // Set the motor.
       if (target->turn_motor_on) {
