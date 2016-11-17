@@ -110,6 +110,7 @@ dll_CFLAGS-$(CONFIG_WINDOWS):=-shared -Wl,-soname,$(dll_TARGET) -Wl,--output-def
 
 dll_SRCS-$(CONFIG_LINUX)=hid-linux.cc
 dll_CFLAGS-$(CONFIG_LINUX)=-shared
+dll_LIBS-$(CONFIG_LINUX)=-lusb-1.0
 
 dll_SRCS+=$(dll_SRCS-y)
 dll_LIBS+=$(dll_LIBS-y)
@@ -139,7 +140,7 @@ DLLTOOL=$(COMPILER_PREFIX)dlltool
 ifeq ("$(V)","1")
 Q=
 else
-Q=@
+Q=
 endif
 
 .PHONY: all
