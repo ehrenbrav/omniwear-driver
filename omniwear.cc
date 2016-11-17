@@ -87,7 +87,9 @@ namespace Omniwear {
     std::array<char,8> msg = { 0x4, 0x10,
                                char (motor), char (duty*255/100),
                                char (0xff) };
-    return HID::write (d, &msg[0], msg.size ()) == msg.size (); }
+    int result = HID::write (d, &msg[0], msg.size ());
+    return result;
+  }
 
   bool define_packed (Device* d, const uint8_t* intensities, int count) {
     if (intensities == nullptr || count != 16)
